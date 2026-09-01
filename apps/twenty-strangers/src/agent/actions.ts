@@ -80,7 +80,10 @@ export const TOOLS: Anthropic.Tool[] = [
         },
         frictions: {
           type: "array",
-          description: "Specific things that got in your way. Empty if genuinely none.",
+          description:
+            "Specific things that got in your way. Empty if genuinely none. Phrase each " +
+            "as what YOU experienced or could not find — never as an absolute claim that " +
+            "something does not exist on the site, which you cannot know from one short visit.",
           items: {
             type: "object",
             properties: {

@@ -61,6 +61,13 @@ function systemPrompt(p: Persona, objective: string, target: string): string {
     `- Call finish the moment you have your answer OR the moment you would genuinely give up.`,
     `- Giving up early is a valid, useful outcome. Do not pretend to succeed.`,
     ``,
+    `REPORT ONLY WHAT YOU SAW`,
+    `You looked at a handful of pages for a few seconds. That is enough to say`,
+    `what YOU could not find. It is NOT enough to say a thing does not exist.`,
+    `Write "I couldn't find a way to contact support" — never "there is no`,
+    `contact page". You may well have missed it, and claiming otherwise turns a`,
+    `fair observation into a false accusation about someone's website.`,
+    ``,
     `When you call finish, your "quote" should sound like a real person talking,`,
     `not a report. One sentence. Specific to what you actually saw.`,
   ]
@@ -68,18 +75,79 @@ function systemPrompt(p: Persona, objective: string, target: string): string {
     .join("\n")
 }
 
+/**
+ * Last resort only — used when we cannot even ask for a verdict (cancelled
+ * run, dead model call). Running out of patience does NOT come here; that
+ * path asks the persona for a real verdict instead, because "I ran out of
+ * patience" as boilerplate is the most common outcome and would otherwise be
+ * the most common thing anyone reads.
+ */
 function fallbackVerdict(reason: string, persona: Persona): Verdict {
   return {
     completed: false,
     stoppedAt: reason,
-    quote: `I ran out of patience before I got anywhere useful.`,
+    quote: `I gave up before I got anywhere useful.`,
     frictions: [
       {
         kind: "findability",
-        detail: `${persona.name} used their whole attention span without reaching ${persona.mission.toLowerCase()}`,
+        detail: `${persona.name} ran out of patience before finding what they came for`,
         severity: "major",
       },
     ],
+  }
+}
+
+/**
+ * Ask a persona who has run out of steps for their honest verdict, forcing the
+ * finish tool so we get a real answer rather than another action.
+ */
+async function forceVerdict(
+  client: Anthropic,
+  model: string,
+  persona: Persona,
+  objective: string,
+  target: string,
+  messages: Anthropic.MessageParam[],
+  meter: TokenMeter,
+  signal: AbortSignal,
+): Promise<Verdict | null> {
+  try {
+    const res = await client.messages.create(
+      {
+        model,
+        max_tokens: 1024,
+        system: systemPrompt(persona, objective, target),
+        tools: TOOLS,
+        tool_choice: { type: "tool", name: "finish" },
+        messages: [
+          ...messages,
+          {
+            role: "user",
+            content:
+              "You have run out of patience. Stop exploring and give your honest verdict " +
+              "now, based only on what you actually saw.",
+          },
+        ],
+      },
+      { signal },
+    )
+    meter.add(res.usage)
+    const use = res.content.find((c): c is Anthropic.ToolUseBlock => c.type === "tool_use")
+    if (!use || use.name !== "finish") return null
+    const inp = use.input as {
+      completed?: boolean
+      stopped_at?: string
+      quote?: string
+      frictions?: Friction[]
+    }
+    return {
+      completed: Boolean(inp.completed),
+      stoppedAt: String(inp.stopped_at ?? "ran out of patience"),
+      quote: String(inp.quote ?? "").trim() || "I gave up before I got anywhere useful.",
+      frictions: Array.isArray(inp.frictions) ? inp.frictions : [],
+    }
+  } catch {
+    return null
   }
 }
 
@@ -217,5 +285,9 @@ export async function runPersonaLoop(page: Page, opts: LoopOptions): Promise<{ v
     }
   }
 
-  return { verdict: fallbackVerdict("used up their patience", persona), steps: step }
+  // Out of steps. Ask for a real verdict rather than emitting boilerplate.
+  const forced = await forceVerdict(
+    client, model, persona, opts.objective, opts.target, messages, meter, signal,
+  )
+  return { verdict: forced ?? fallbackVerdict("used up their patience", persona), steps: step }
 }
