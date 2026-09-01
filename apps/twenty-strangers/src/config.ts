@@ -67,6 +67,23 @@ export const config = {
     maxQueueDepth: intEnv("TS_MAX_QUEUE_DEPTH", 8),
   },
 
+  billing: {
+    /**
+     * What one run costs a visitor, in dollars. THE pricing dial — change this
+     * and nothing else.
+     *
+     * $2 is chosen against measured costs: a run costs roughly $0.45-$0.65 in
+     * Solari and Anthropic spend, and Stripe takes 2.9% + $0.30. At $2 that
+     * leaves about $1.10 after everything, and stays positive even on an
+     * expensive run. At $1 the fixed 30c fee alone is 30% of the transaction
+     * and an expensive run breaks even or loses money.
+     */
+    runPriceUsd: Number(process.env.TS_RUN_PRICE_USD ?? "2.00"),
+    stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
+    /** Absolute origin Stripe returns visitors to. */
+    publicBaseUrl: process.env.PUBLIC_BASE_URL ?? "",
+  },
+
   /** Rough per-run cost estimate, shown in the UI so the spend is never a
    *  surprise. Sourced from the Starter-plan rate card. */
   pricing: {

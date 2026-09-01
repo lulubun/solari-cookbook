@@ -111,6 +111,42 @@ not much more to win there.
 The exact number is shown at the end of every run. It's not hidden, because
 "this cost 49 cents" is a more interesting claim than "this was fast".
 
+## Paying for a run
+
+$2, charged only if the run actually works. No account, no email, no
+subscription, no balance to top up — and nothing to pay if you bring your own
+API keys.
+
+The flow is deliberately boring: validate the URL, send you to Stripe's own
+hosted checkout, bring you back, run the swarm. Cards never touch this server.
+
+The one non-obvious choice is that the charge is **authorised, not captured**.
+Stripe places a hold when you pay; the money is only taken once a report
+exists. If the run fails, the authorisation is voided and you are charged
+nothing at all. That is strictly better than charging and refunding, because
+Stripe keeps its fixed fee on a refund — a refunded failure would cost about
+thirty cents even though you were made whole.
+
+There is also no database. The run's details ride in the Checkout Session's
+metadata, which makes Stripe the store of record: a restart, a redeploy, or a
+crash between paying and running loses nothing. That metadata is also the only
+source of the run parameters when you return, so a payment for one site cannot
+be redirected at another. The PaymentIntent's own status is the replay guard —
+once captured it is no longer `requires_capture`, so one payment cannot buy two
+runs.
+
+### Why $2
+
+A run costs $0.45–$0.65 in Solari and Anthropic spend, and Stripe takes
+2.9% + $0.30. That fixed 30¢ is what decides the price: at $1 it is 30% of the
+transaction before any compute is paid for, and an expensive run breaks even or
+loses money. At $2 the margin is about $1.10 and stays positive even on a bad
+run.
+
+`TS_RUN_PRICE_USD` is the only pricing dial. Leave `STRIPE_SECRET_KEY` unset
+entirely and the app runs free with house rate limits, exactly as it did
+before.
+
 ## How it works
 
 ```

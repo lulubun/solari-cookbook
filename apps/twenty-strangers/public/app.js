@@ -21,6 +21,7 @@ const els = {
   cancel: $("cancel-btn"),
   castGrid: $("cast-grid"),
   byoToggle: $("byo-toggle"),
+  costNote: $("cost-note"),
   intlToggle: $("intl-toggle"),
   intlNote: $("intl-note"),
   siteType: $("site-type"),
@@ -33,6 +34,31 @@ const FLAG = { de: "🇩🇪", gb: "🇬🇧", jp: "🇯🇵", us: "🇺🇸", f
 
 let socket = null
 const tiles = new Map()
+let pricing = { paymentRequired: false, priceUsd: 0 }
+
+async function loadPricing() {
+  try {
+    pricing = await (await fetch("/api/pricing")).json()
+  } catch {
+    // Leave the default; the server is the authority either way.
+  }
+  paintPrice()
+}
+
+/** The button says what it will cost, before anyone clicks it. */
+function paintPrice() {
+  const byo = els.byoToggle.checked
+  if (!pricing.paymentRequired || byo) {
+    els.runBtn.textContent = "Send them in"
+    els.costNote.textContent = byo
+      ? "Free — it runs on your keys and bills you directly."
+      : "A run takes ~35s and costs ~50¢ — of which the twenty browsers are about 1¢."
+    return
+  }
+  els.runBtn.textContent = `Send them in — $${pricing.priceUsd.toFixed(2)}`
+  els.costNote.textContent =
+    `$${pricing.priceUsd.toFixed(2)} per run, charged only if the run succeeds. Or use your own keys for free.`
+}
 
 const FAMILY_LABEL = {
   technical: "Technical",
@@ -90,6 +116,7 @@ function castCard(p) {
 // ---------- running ----------
 els.byoToggle.addEventListener("change", () => {
   els.byoFields.hidden = !els.byoToggle.checked
+  paintPrice()
 })
 
 els.intlToggle.addEventListener("change", () => {
@@ -111,7 +138,7 @@ els.cancel.addEventListener("click", () => {
   setStatus("Stopping…")
 })
 
-function start() {
+async function start() {
   const target = els.target.value.trim()
   if (!target) return
 
@@ -133,20 +160,58 @@ function start() {
   els.report.innerHTML = ""
   els.grid.innerHTML = ""
   tiles.clear()
-  setStatus("Waking up twenty browsers…")
 
+  // A paid instance sends people to Stripe first. Their own keys skip it.
+  if (pricing.paymentRequired && !els.byoToggle.checked) {
+    setStatus("Taking you to checkout…")
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          target,
+          objective,
+          siteType,
+          international: els.intlToggle.checked,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        els.runBtn.disabled = false
+        return setStatus(data.error ?? "Couldn't start checkout.", true)
+      }
+      // Remember the form so returning from Stripe feels continuous.
+      sessionStorage.setItem("ts:last", JSON.stringify({ target, objective, siteType }))
+      location.href = data.url
+    } catch {
+      els.runBtn.disabled = false
+      setStatus("Couldn't reach checkout. You have not been charged.", true)
+    }
+    return
+  }
+
+  setStatus("Waking up twenty browsers…")
+  openSocket({ target, objective, siteType })
+}
+
+/** Opens the run socket. `paymentSessionId` means Stripe already has a hold. */
+function openSocket({ target, objective, siteType, paymentSessionId }) {
+
+  els.runBtn.disabled = true
   const proto = location.protocol === "https:" ? "wss:" : "ws:"
   socket = new WebSocket(`${proto}//${location.host}/ws`)
 
   socket.addEventListener("open", () => {
-    const msg = {
-      type: "start",
-      target,
-      objective,
-      siteType,
-      international: els.intlToggle.checked,
-    }
-    if (els.byoToggle.checked) {
+    const msg = paymentSessionId
+      ? { type: "start", paymentSessionId }
+      : {
+          type: "start",
+          target,
+          objective,
+          siteType,
+          international: els.intlToggle.checked,
+        }
+    if (!paymentSessionId && els.byoToggle.checked) {
       msg.solariApiKey = els.solariKey.value.trim()
       msg.anthropicApiKey = els.anthropicKey.value.trim()
     }
@@ -365,5 +430,39 @@ function esc(s) {
   )
 }
 
+/**
+ * Coming back from Stripe. The run's details live in the payment's metadata on
+ * the server side, so all we carry back is the session id.
+ */
+function resumeAfterCheckout() {
+  const params = new URLSearchParams(location.search)
+  const paid = params.get("paid")
+  const canceled = params.get("canceled")
+
+  // Clean the URL so a refresh cannot try to redeem a spent payment.
+  if (paid || canceled) history.replaceState({}, "", location.pathname)
+
+  if (canceled) {
+    setStatus("Checkout cancelled — you have not been charged.")
+    return
+  }
+  if (!paid) return
+
+  try {
+    const last = JSON.parse(sessionStorage.getItem("ts:last") ?? "{}")
+    if (last.target) els.target.value = last.target
+    if (last.objective) els.objective.value = last.objective
+    if (last.siteType) els.siteType.value = last.siteType
+  } catch {
+    // Cosmetic only.
+  }
+  sessionStorage.removeItem("ts:last")
+
+  setStatus("Payment held. Sending them in…")
+  openSocket({ paymentSessionId: paid })
+}
+
 loadSiteTypes()
+loadPricing()
 loadCast()
+resumeAfterCheckout()
