@@ -26,7 +26,10 @@ const KIND_HEADLINE: Record<FrictionKind, string> = {
 export function buildThemes(results: PersonaResult[]): RunReport["themes"] {
   const byKind = new Map<FrictionKind, { raisedBy: Set<string>; worst: Friction["severity"] }>()
 
-  for (const r of results) {
+  // A persona whose browser or model call failed never formed an opinion. Its
+  // synthesised "frictions" describe our outage, not the site, and letting
+  // them into the themes would manufacture findings out of our own downtime.
+  for (const r of results.filter((x) => !x.error)) {
     for (const f of r.verdict.frictions) {
       if (!KIND_HEADLINE[f.kind]) continue
       const entry = byKind.get(f.kind) ?? { raisedBy: new Set<string>(), worst: "minor" as const }
@@ -51,7 +54,13 @@ export function buildThemes(results: PersonaResult[]): RunReport["themes"] {
     })
 }
 
+/** Rate over personas that actually visited. Errored ones are not counted. */
 export function completionRate(results: PersonaResult[]): number {
-  if (results.length === 0) return 0
-  return results.filter((r) => r.verdict.completed).length / results.length
+  const visited = results.filter((r) => !r.error)
+  if (visited.length === 0) return 0
+  return visited.filter((r) => r.verdict.completed).length / visited.length
+}
+
+export function erroredCount(results: PersonaResult[]): number {
+  return results.filter((r) => r.error).length
 }

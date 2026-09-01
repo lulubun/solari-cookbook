@@ -178,9 +178,15 @@ function handle(e) {
     case "persona:done": {
       const t = tiles.get(e.personaId)
       if (t) {
+        const errored = Boolean(e.result.error)
         const ok = e.result.verdict.completed
         t.root.classList.remove("active")
-        t.root.classList.add("done", ok ? "pass" : "fail")
+        t.root.classList.add("done", errored ? "errored" : ok ? "pass" : "fail")
+        if (errored) {
+          t.screen.innerHTML = '<span class="outcome-glyph errored">!</span>'
+          t.foot.innerHTML = '<span class="action">never arrived — not counted</span>'
+          break
+        }
         // Freeze the last frame if we ever got one; otherwise the tile still
         // has to say something, so it says how it ended.
         if (!t.img) {
@@ -226,7 +232,9 @@ function renderReport(r) {
   const pct = Math.round(r.completionRate * 100)
   const cls = pct >= 70 ? "good" : pct >= 40 ? "mid" : "bad"
   const secs = Math.round(r.durationMs / 1000)
-  const done = r.results.filter((x) => x.verdict.completed).length
+  const visited = r.results.filter((x) => !x.error)
+  const done = visited.filter((x) => x.verdict.completed).length
+  const errored = r.errored ?? 0
 
   const themes = r.themes
     .map(
@@ -241,7 +249,7 @@ function renderReport(r) {
     )
     .join("")
 
-  const verdicts = r.results
+  const verdicts = visited
     .map((x) => {
       const ok = x.verdict.completed
       const replay = x.replayUrl
@@ -268,7 +276,7 @@ function renderReport(r) {
         <span class="l">got what they came for</span>
       </div>
       <div class="score">
-        <span class="n">${done}<span style="color:var(--ink-faint)">/${r.results.length}</span></span>
+        <span class="n">${done}<span style="color:var(--ink-faint)">/${visited.length}</span></span>
         <span class="l">strangers succeeded</span>
       </div>
       <div class="score">
@@ -280,6 +288,7 @@ function renderReport(r) {
         <span class="l">cost to find out</span>
       </div>
     </div>
+    ${errored ? `<p class="fine errored-note">${errored} stranger${errored === 1 ? "" : "s"} never reached the site (browser or model failure). They're excluded from every number above — an outage on our side isn't a finding about yours.</p>` : ""}
     <h3>What kept coming up</h3>
     ${themes || '<p class="fine">No shared friction — unusual, and a good sign.</p>'}
     <h3>What each of them said</h3>

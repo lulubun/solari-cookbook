@@ -53,7 +53,12 @@ export interface RunReport {
   objective: string
   startedAt: string
   durationMs: number
+  /** Share of personas that ACTUALLY VISITED and got what they came for.
+   *  Personas whose browser or model call failed are excluded from the
+   *  denominator — an infrastructure failure is not a finding about the site. */
   completionRate: number
+  /** Personas that never got to judge the site. Reported, never counted. */
+  errored: number
   results: PersonaResult[]
   /** Frictions clustered across personas — the actually actionable output. */
   themes: Array<{

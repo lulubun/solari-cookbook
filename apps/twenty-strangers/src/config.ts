@@ -36,6 +36,8 @@ export const config = {
 
   solariApiKey: process.env.SOLARI_API_KEY ?? "",
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
+  /** Required when the Anthropic key is identity-linked; harmless otherwise. */
+  anthropicWorkspaceId: process.env.ANTHROPIC_WORKSPACE_ID ?? "",
 
   browseModel: env("TS_BROWSE_MODEL", "claude-haiku-4-5-20251001") as ModelId,
   verdictModel: env("TS_VERDICT_MODEL", "claude-haiku-4-5-20251001") as ModelId,

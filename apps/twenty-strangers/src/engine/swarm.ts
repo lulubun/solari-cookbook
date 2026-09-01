@@ -10,15 +10,14 @@
  * event stream, different scoring — which is why `RunMode` exists.
  */
 
-import Anthropic from "@anthropic-ai/sdk"
 import { Solari, SolariError } from "@solarisdk/browser"
 import type { Emit, RunMode, RunReport, RunRequest, PersonaResult } from "./types.js"
 import type { Credentials } from "../config.js"
 import { config } from "../config.js"
 import { pickSwarm } from "../personas.js"
 import { runPersona } from "./persona-run.js"
-import { TokenMeter } from "../agent/llm.js"
-import { buildThemes, completionRate } from "../report/aggregate.js"
+import { TokenMeter, makeClient } from "../agent/llm.js"
+import { buildThemes, completionRate, erroredCount } from "../report/aggregate.js"
 
 export function swarmMode(creds: Credentials, runId: string): RunMode {
   return {
@@ -37,7 +36,7 @@ export function swarmMode(creds: Credentials, runId: string): RunMode {
       })
 
       const solari = new Solari({ apiKey: creds.solariApiKey })
-      const anthropic = new Anthropic({ apiKey: creds.anthropicApiKey, maxRetries: 3 })
+      const anthropic = makeClient(creds.anthropicApiKey, config.anthropicWorkspaceId)
       const meter = new TokenMeter()
 
       // One slot per allowed concurrent browser. Personas take a slot, run,
@@ -99,6 +98,7 @@ export function swarmMode(creds: Credentials, runId: string): RunMode {
         startedAt,
         durationMs,
         completionRate: completionRate(results),
+        errored: erroredCount(results),
         results,
         themes: buildThemes(results),
         cost: {

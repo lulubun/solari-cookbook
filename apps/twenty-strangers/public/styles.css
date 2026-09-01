@@ -297,3 +297,7 @@ footer {
 .outcome-glyph { font-size: 30px; line-height: 1; opacity: 0.55; }
 .outcome-glyph.pass { color: var(--good); }
 .outcome-glyph.fail { color: var(--bad); }
+
+.tile.done.errored { border-color: rgba(154, 161, 179, 0.3); opacity: 0.6; }
+.outcome-glyph.errored { color: var(--ink-faint); }
+.errored-note { margin: 0 0 8px; max-width: 62ch; }
