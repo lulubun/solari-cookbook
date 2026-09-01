@@ -29,6 +29,18 @@ export interface Friction {
 export interface Verdict {
   /** Did they achieve their mission? */
   completed: boolean
+  /**
+   * The errand turned out not to apply to this kind of site at all.
+   *
+   * A visitor looking for a company's funding on someone's personal portfolio
+   * has not found a fault — they have discovered the question was wrong. The
+   * capability system heads most of this off, but it cannot anticipate every
+   * pairing, so this is the safety net: not-applicable is reported and then
+   * excluded from the score and the themes, exactly like a crash. Counting it
+   * as failure would mean marking a site down for not being a different kind
+   * of site.
+   */
+  notApplicable?: boolean
   /** Where they stopped, in their own words. */
   stoppedAt: string
   /** The one quotable line. This is what people screenshot. */
@@ -61,6 +73,8 @@ export interface RunReport {
   completionRate: number
   /** Personas that never got to judge the site. Reported, never counted. */
   errored: number
+  /** Personas whose errand did not apply here. Reported, never counted. */
+  notApplicable: number
   results: PersonaResult[]
   /** Frictions clustered across personas — the actually actionable output. */
   themes: Array<{

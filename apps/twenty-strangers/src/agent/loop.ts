@@ -18,6 +18,7 @@ import type { Page } from "patchright-core"
 import type { Persona } from "../personas.js"
 import { missionFor } from "../personas.js"
 import type { SiteType } from "../site-types.js"
+import { absentCapabilities } from "../site-types.js"
 import type { Verdict, Friction } from "../engine/types.js"
 import { observe } from "./observe.js"
 import { executeAction, TOOLS } from "./actions.js"
@@ -49,12 +50,26 @@ function systemPrompt(p: Persona, objective: string, target: string, site: SiteT
     ...site.expectations.map((e) => `  - ${e}`),
     `Judge it as this kind of site. Do not fault a ${site.label.toLowerCase()} for`,
     `lacking things that belong on a different kind of site entirely.`,
+    ...(() => {
+      const absent = absentCapabilities(site)
+      if (absent.length === 0) return []
+      return [
+        ``,
+        `THIS KIND OF SITE DOES NOT HAVE:`,
+        ...absent.map((a) => `  - ${a}`),
+        `These are not missing. They were never expected here. Do NOT report their`,
+        `absence as friction. If the thing you came for is one of them, your errand`,
+        `does not apply to this site: call finish with not_applicable set to true,`,
+        `an empty frictions list, and say plainly that you came to the wrong sort`,
+        `of place. That is a useful, honest outcome and counts against nobody.`,
+      ]
+    })(),
     ``,
     `WHO YOU ARE`,
     p.temperament,
     ``,
     `WHAT YOU CAME FOR`,
-    `${missionFor(p, site.family)}`,
+    `${missionFor(p, site)}`,
     `The person who asked for this visit wants to know: ${objective}`,
     ``,
     `YOUR SITUATION`,
@@ -70,6 +85,20 @@ function systemPrompt(p: Persona, objective: string, target: string, site: SiteT
     `- You are exploring, not transacting. You will never buy, submit, or send anything.`,
     `- Call finish the moment you have your answer OR the moment you would genuinely give up.`,
     `- Giving up early is a valid, useful outcome. Do not pretend to succeed.`,
+    ``,
+    `WHAT IS NOT A FAULT`,
+    `Moving from one page of a site to another page of the same site is ordinary`,
+    `navigation working correctly — never report it as a dead link or a link that`,
+    `"went nowhere". You are told after every click whether the page actually`,
+    `changed; trust that rather than your impression. Only call a link broken when`,
+    `you are told the page did not change at all. If you expected a link to lead`,
+    `somewhere other than where it went, say what made you expect that — the label,`,
+    `its position, an icon — because that mismatch is the real finding.`,
+    ``,
+    `If what you came looking for is not something this KIND of site would have at`,
+    `all, that is not a fault either. Say so by setting not_applicable, and do not`,
+    `list it as friction. Looking for a company's funding on one person's own site`,
+    `is the wrong question, not a missing page.`,
     ``,
     `REPORT ONLY WHAT YOU SAW`,
     `You looked at a handful of pages for a few seconds. That is enough to say`,
@@ -147,12 +176,14 @@ async function forceVerdict(
     if (!use || use.name !== "finish") return null
     const inp = use.input as {
       completed?: boolean
+      not_applicable?: boolean
       stopped_at?: string
       quote?: string
       frictions?: Friction[]
     }
     return {
       completed: Boolean(inp.completed),
+      notApplicable: Boolean(inp.not_applicable),
       stoppedAt: String(inp.stopped_at ?? "ran out of patience"),
       quote: String(inp.quote ?? "").trim() || "I gave up before I got anywhere useful.",
       frictions: Array.isArray(inp.frictions) ? inp.frictions : [],
@@ -221,6 +252,7 @@ export async function runPersonaLoop(page: Page, opts: LoopOptions): Promise<{ v
     if (toolUse.name === "finish") {
       const inp = toolUse.input as {
         completed?: boolean
+        not_applicable?: boolean
         stopped_at?: string
         quote?: string
         frictions?: Friction[]
@@ -229,6 +261,7 @@ export async function runPersonaLoop(page: Page, opts: LoopOptions): Promise<{ v
       return {
         verdict: {
           completed: Boolean(inp.completed),
+          notApplicable: Boolean(inp.not_applicable),
           stoppedAt: String(inp.stopped_at ?? "unclear"),
           quote: String(inp.quote ?? "").trim() || "No comment.",
           frictions: Array.isArray(inp.frictions) ? inp.frictions : [],

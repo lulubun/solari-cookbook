@@ -29,7 +29,7 @@ export function buildThemes(results: PersonaResult[]): RunReport["themes"] {
   // A persona whose browser or model call failed never formed an opinion. Its
   // synthesised "frictions" describe our outage, not the site, and letting
   // them into the themes would manufacture findings out of our own downtime.
-  for (const r of results.filter((x) => !x.error)) {
+  for (const r of results.filter((x) => !x.error && !x.verdict.notApplicable)) {
     for (const f of r.verdict.frictions) {
       if (!KIND_HEADLINE[f.kind]) continue
       const entry = byKind.get(f.kind) ?? { raisedBy: new Set<string>(), worst: "minor" as const }
@@ -55,12 +55,20 @@ export function buildThemes(results: PersonaResult[]): RunReport["themes"] {
 }
 
 /** Rate over personas that actually visited. Errored ones are not counted. */
+export function scored(results: PersonaResult[]): PersonaResult[] {
+  return results.filter((r) => !r.error && !r.verdict.notApplicable)
+}
+
 export function completionRate(results: PersonaResult[]): number {
-  const visited = results.filter((r) => !r.error)
+  const visited = scored(results)
   if (visited.length === 0) return 0
   return visited.filter((r) => r.verdict.completed).length / visited.length
 }
 
 export function erroredCount(results: PersonaResult[]): number {
   return results.filter((r) => r.error).length
+}
+
+export function notApplicableCount(results: PersonaResult[]): number {
+  return results.filter((r) => !r.error && r.verdict.notApplicable).length
 }

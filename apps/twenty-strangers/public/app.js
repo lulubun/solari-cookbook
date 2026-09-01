@@ -429,9 +429,13 @@ function handle(e) {
       const t = tiles.get(e.personaId)
       if (t) {
         const errored = Boolean(e.result.error)
+        const na = Boolean(e.result.verdict.notApplicable)
         const ok = e.result.verdict.completed
         t.root.classList.remove("active")
-        t.root.classList.add("done", errored ? "errored" : ok ? "pass" : "fail")
+        t.root.classList.add("done", errored ? "errored" : na ? "na" : ok ? "pass" : "fail")
+        if (na && !t.img) {
+          t.screen.innerHTML = '<span class="outcome-glyph na">—</span>'
+        }
         if (errored) {
           t.screen.innerHTML = '<span class="outcome-glyph errored">!</span>'
           t.foot.innerHTML = '<span class="action">never arrived — not counted</span>'
@@ -482,9 +486,11 @@ function renderReport(r) {
   const pct = Math.round(r.completionRate * 100)
   const cls = pct >= 70 ? "good" : pct >= 40 ? "mid" : "bad"
   const secs = Math.round(r.durationMs / 1000)
-  const visited = r.results.filter((x) => !x.error)
+  const visited = r.results.filter((x) => !x.error && !x.verdict.notApplicable)
   const done = visited.filter((x) => x.verdict.completed).length
   const errored = r.errored ?? 0
+  const na = r.notApplicable ?? 0
+  const naNames = r.results.filter((x) => !x.error && x.verdict.notApplicable).map((x) => x.persona.name)
 
   const themes = r.themes
     .map(
@@ -495,6 +501,21 @@ function renderReport(r) {
           <h4>${esc(t.headline)}<span class="sev ${t.severity}">${t.severity}</span></h4>
           <p>Raised by ${esc(t.raisedBy.join(", "))}</p>
         </div>
+      </div>`,
+    )
+    .join("")
+
+  const naCards = r.results
+    .filter((x) => !x.error && x.verdict.notApplicable)
+    .map(
+      (x) => `
+      <div class="verdict na">
+        <div class="verdict-head">
+          <span>${x.persona.emoji}</span>
+          <span class="name">${esc(x.persona.name)}</span>
+          <span class="outcome">didn't apply · not counted</span>
+        </div>
+        <blockquote>“${esc(x.verdict.quote)}”</blockquote>
       </div>`,
     )
     .join("")
@@ -539,10 +560,12 @@ function renderReport(r) {
       </div>
     </div>
     ${errored ? `<p class="fine errored-note">${errored} stranger${errored === 1 ? "" : "s"} never reached the site (browser or model failure). They're excluded from every number above — an outage on our side isn't a finding about yours.</p>` : ""}
+    ${na ? `<p class="fine na-note">${esc(naNames.join(", "))} came looking for something this kind of site wouldn't have. That's the wrong question, not a fault — they're excluded from every number above.</p>` : ""}
     <h3>What kept coming up</h3>
     ${themes || '<p class="fine">No shared friction — unusual, and a good sign.</p>'}
     <h3>What each of them said</h3>
-    <div class="verdicts">${verdicts}</div>`
+    <div class="verdicts">${verdicts}</div>
+    ${naCards ? `<h3>Came for something this kind of site wouldn't have</h3><div class="verdicts">${naCards}</div>` : ""}`
   els.report.hidden = false
   els.report.scrollIntoView({ behavior: "smooth", block: "start" })
 }

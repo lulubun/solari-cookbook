@@ -19,7 +19,7 @@ import { pickSwarm } from "../personas.js"
 import { siteTypeById, SITE_TYPES } from "../site-types.js"
 import { runPersona } from "./persona-run.js"
 import { TokenMeter, makeClient } from "../agent/llm.js"
-import { buildThemes, completionRate, erroredCount } from "../report/aggregate.js"
+import { buildThemes, completionRate, erroredCount, notApplicableCount } from "../report/aggregate.js"
 
 export function swarmMode(creds: Credentials, runId: string): RunMode {
   return {
@@ -114,6 +114,7 @@ export function swarmMode(creds: Credentials, runId: string): RunMode {
         durationMs,
         completionRate: completionRate(results),
         errored: erroredCount(results),
+        notApplicable: notApplicableCount(results),
         results,
         themes: buildThemes(results),
         cost: {

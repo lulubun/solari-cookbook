@@ -72,6 +72,14 @@ export const TOOLS: Anthropic.Tool[] = [
       type: "object",
       properties: {
         completed: { type: "boolean", description: "Did you achieve your mission?" },
+        not_applicable: {
+          type: "boolean",
+          description:
+            "Set true if what you came looking for is not something this KIND of site would " +
+            "have — e.g. looking for a company's funding on an individual's personal site. " +
+            "This is not a fault in the site and will not be counted against it. Do NOT set " +
+            "it merely because you could not find something the site plausibly should have.",
+        },
         stopped_at: { type: "string", description: "Where you stopped, in one short phrase." },
         quote: {
           type: "string",
@@ -116,6 +124,14 @@ async function refLocator(page: Page, ref: number) {
   return page.locator(`[data-ts-ref="${ref}"]`).first()
 }
 
+function originOf(url: string): string {
+  try {
+    return new URL(url).origin
+  } catch {
+    return url
+  }
+}
+
 export async function executeAction(
   page: Page,
   name: string,
@@ -137,10 +153,35 @@ export async function executeAction(
       }
 
       const loc = await refLocator(page, ref)
+      const beforeUrl = page.url()
+      const beforeTitle = await page.title().catch(() => "")
       try {
         await loc.click({ timeout: 8000 })
         await page.waitForLoadState("domcontentloaded", { timeout: 8000 }).catch(() => {})
-        return { result: `Clicked "${label}". Now at ${page.url()}`, log: `clicked "${label}"` }
+        const afterUrl = page.url()
+        const afterTitle = await page.title().catch(() => "")
+
+        // Tell the model what actually happened rather than letting it infer.
+        // Left to guess, a persona reports ordinary internal navigation as a
+        // broken link — "the links didn't take me anywhere different" — which
+        // is a fabricated fault, and the most common kind here.
+        let result: string
+        if (afterUrl !== beforeUrl) {
+          const external = originOf(afterUrl) !== originOf(beforeUrl)
+          result =
+            `Clicked "${label}". The page changed to ${afterUrl}` +
+            (afterTitle ? ` — "${afterTitle}"` : "") +
+            (external
+              ? `. That left the site you were visiting.`
+              : `. That is ordinary navigation within the same site, and is working correctly.`)
+        } else if (afterTitle !== beforeTitle) {
+          result = `Clicked "${label}". The URL is unchanged but the page content changed to "${afterTitle}".`
+        } else {
+          result =
+            `Clicked "${label}". The URL did not change (still ${afterUrl}) and the title is the same. ` +
+            `Either nothing happened, or something changed further down the page — check the outline below before concluding the link is broken.`
+        }
+        return { result, log: `clicked "${label}"` }
       } catch {
         return {
           result: `Could not click ref ${ref} ("${label}") — it may have moved or be covered by an overlay.`,

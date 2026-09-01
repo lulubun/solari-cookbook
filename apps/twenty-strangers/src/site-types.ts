@@ -268,3 +268,33 @@ export const DEFAULT_SITE_TYPE = "saas"
 export function siteTypeById(id: string): SiteType | undefined {
   return SITE_TYPES.find((t) => t.id === id)
 }
+
+/** Human phrasing for each capability, for telling a visitor what is absent. */
+const CAPABILITY_LABEL: Record<keyof SiteCapabilities, string> = {
+  accounts: "user accounts or a sign-in",
+  pricing: "prices",
+  purchase: "any way to buy or transact",
+  docs: "technical documentation",
+  support: "a customer support channel",
+  location: "a physical location to visit",
+  listings: "a searchable catalogue of listings",
+  editorial: "articles or written content as its purpose",
+  enterprise: "enterprise or organisational sales",
+  careers: "hiring or careers information",
+  events: "dates, schedules, or events",
+}
+
+/**
+ * What this kind of site simply does not have.
+ *
+ * Handing this to a visitor as fact is far more reliable than hoping they
+ * infer it. Left to work it out, a visitor who only wants to sign in will
+ * hunt a personal portfolio for a login and then report its absence as a
+ * blocking fault — a fabricated finding about a site that was never supposed
+ * to have one.
+ */
+export function absentCapabilities(site: SiteType): string[] {
+  return (Object.keys(site.has) as Array<keyof SiteCapabilities>)
+    .filter((k) => !site.has[k])
+    .map((k) => CAPABILITY_LABEL[k])
+}

@@ -44,6 +44,11 @@ export interface Persona {
    * the bench sends someone the site can actually frustrate.
    */
   requires?: Array<keyof SiteCapabilities>
+  /**
+   * Mission for one specific site type, where even the family is too coarse.
+   * Checked before `missionByFamily`.
+   */
+  missionByType?: Record<string, string>
   /** Behavioural instructions handed to the agent loop verbatim. */
   temperament: string
   device: {
@@ -101,7 +106,7 @@ export const PERSONAS: Persona[] = [
     name: "Priya",
     emoji: "🔍",
     blurb: "Actually reads the words. All of them.",
-    mission: "Understand precisely what this product does and who it is for.",
+    mission: "Understand precisely what this offers and who it is for.",
     temperament:
       "You read carefully and notice vagueness, buzzwords, and claims without substance. You are patient but exacting. Quote any sentence you found genuinely unclear.",
     device: { width: 1440, height: 900, isMobile: false },
@@ -323,6 +328,9 @@ export const PERSONAS: Persona[] = [
     emoji: "🇯🇵",
     blurb: "Reading in a second language, from the other side of the world.",
     mission: "Understand what this offers and whether it works in my country.",
+    missionByFamily: {
+      content: "Understand what this is about, and whether any of it assumes I'm American.",
+    },
     temperament:
       "You are visiting from Japan and read English as a second language. Long idiomatic sentences slow you down. Look for localisation, regional availability, and currency. Report anything that assumes a US-only audience.",
     device: { width: 1440, height: 900, isMobile: false },
@@ -367,8 +375,26 @@ export const PERSONAS: Persona[] = [
     emoji: "📰",
     blurb: "Writing about your category. Wants facts, not adjectives.",
     mission: "Establish who founded this, how big it is, and who backs it.",
+    missionByType: {
+      // The default hunts for founders and funding. On an individual's own
+      // site that is not a gap in the site — it is the wrong question, and
+      // asking it would mark someone down for not being a company.
+      portfolio:
+        "Establish who this person actually is, what they have genuinely done, and whether the claims stand up.",
+      "info-reference":
+        "Establish who maintains this, on whose authority, and when it was last checked.",
+      nonprofit:
+        "Establish who runs this organisation, where the money goes, and whether that is documented.",
+      "blog-news":
+        "Establish who publishes this, who writes it, and whether they say so plainly.",
+      "open-source":
+        "Establish who maintains this project, how active they are, and who depends on it.",
+      education:
+        "Establish who runs this institution, who teaches here, and what results they publish.",
+    },
     missionByFamily: {
       commerce: "Establish who actually runs this shop, where they are, and whether they're a real business.",
+      content: "Establish who is behind this and whether anything about them can be verified.",
     },
     temperament:
       "You are researching this company for a piece of writing. You want verifiable facts: founders, location, funding, customers, dates. Marketing adjectives are useless to you. Report what you could and could not verify.",
@@ -590,9 +616,9 @@ export function isInternational(p: Persona): boolean {
   return p.proxyCountry !== null
 }
 
-/** The mission this persona pursues on this family of site. */
-export function missionFor(p: Persona, family: SiteFamily): string {
-  return p.missionByFamily?.[family] ?? p.mission
+/** The mission this persona pursues on this particular site. */
+export function missionFor(p: Persona, site: SiteType): string {
+  return p.missionByType?.[site.id] ?? p.missionByFamily?.[site.family] ?? p.mission
 }
 
 /**

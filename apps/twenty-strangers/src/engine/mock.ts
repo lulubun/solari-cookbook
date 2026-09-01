@@ -219,7 +219,7 @@ export function mockMode(runId: string): RunMode {
           personas.findIndex((p) => p.id === b.persona.id),
       )
 
-      const { buildThemes, completionRate, erroredCount } = await import("../report/aggregate.js")
+      const { buildThemes, completionRate, erroredCount, notApplicableCount } = await import("../report/aggregate.js")
       const browserHours = results.reduce((s, r) => s + r.durationMs / 3_600_000, 0)
 
       const report: RunReport = {
@@ -232,6 +232,7 @@ export function mockMode(runId: string): RunMode {
         durationMs: Date.now() - t0,
         completionRate: completionRate(results),
         errored: erroredCount(results),
+        notApplicable: notApplicableCount(results),
         results,
         themes: buildThemes(results),
         cost: { browserHours, estimatedUsd: browserHours * 0.1 },

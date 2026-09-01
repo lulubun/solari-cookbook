@@ -410,3 +410,9 @@ select option { background: var(--bg-raised); color: var(--ink); }
 .m-fact { font-family: var(--mono); font-size: 11.5px; color: var(--ink-dim); background: var(--bg-raised); border: 1px solid var(--line-soft); border-radius: 6px; padding: 4px 9px; }
 .m-where { font-size: 13px; color: var(--ink-dim); line-height: 1.6; }
 .m-where .all { color: var(--good); }
+
+/* A visitor whose errand did not apply here: reported, never counted. */
+.tile.done.na { border-color: rgba(154, 161, 179, 0.28); opacity: 0.75; }
+.outcome-glyph.na { color: var(--ink-faint); }
+.verdict.na { border-left-color: var(--ink-faint); opacity: 0.82; }
+.na-note { margin: 0 0 8px; max-width: 64ch; }
