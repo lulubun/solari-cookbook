@@ -15,6 +15,7 @@ import { WebSocketServer, type WebSocket } from "ws"
 
 import { config, houseCredentials, type Credentials } from "./config.js"
 import { PERSONAS, DOMESTIC_ALTERNATES, rosterFor } from "./personas.js"
+import { RATIONALE } from "./persona-rationale.js"
 import { SITE_TYPES, siteTypeById } from "./site-types.js"
 import { RunQueue } from "./queue.js"
 import { SlidingWindow } from "./ratelimit.js"
@@ -52,6 +53,13 @@ app.get("/api/personas", (req, res) => {
       device: p.device,
       locale: p.locale,
       proxyCountry: p.proxyCountry,
+      patience: p.patience,
+      rationale: RATIONALE[p.id] ?? null,
+      // Which kinds of site this person turns up on at all. Answers the
+      // obvious follow-up to "why are they here" — "and when are they not".
+      appearsOn: SITE_TYPES.filter((t) =>
+        rosterFor(international, t).some((q) => q.id === p.id),
+      ).map((t) => t.label),
     })),
   )
 })

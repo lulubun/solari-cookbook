@@ -20,6 +20,9 @@ const els = {
   report: $("report"),
   cancel: $("cancel-btn"),
   castGrid: $("cast-grid"),
+  modal: $("persona-modal"),
+  modalBody: $("modal-body"),
+  modalClose: $("modal-close"),
   costNote: $("cost-note"),
   modes: $("modes"),
   codeFields: $("code-fields"),
@@ -108,7 +111,10 @@ async function loadSiteTypes() {
 }
 
 // ---------- the cast ----------
+let castById = new Map()
+
 function renderCast(personas) {
+  castById = new Map(personas.map((p) => [p.id, p]))
   els.castGrid.innerHTML = personas.map(castCard).join("")
 }
 
@@ -131,12 +137,84 @@ function deviceLabel(p) {
 function castCard(p) {
   const geo = p.proxyCountry ? `${FLAG[p.proxyCountry] ?? ""} ${p.proxyCountry.toUpperCase()}` : "direct"
   return `
-    <div class="cast-card">
+    <div class="cast-card" data-persona="${esc(p.id)}" tabindex="0" role="button"
+         aria-label="What ${esc(p.name)} is testing for">
       <div class="top"><span>${p.emoji}</span><span class="nm">${esc(p.name)}</span></div>
       <p>${esc(p.blurb)}</p>
       <div class="spec"><span>${deviceLabel(p)}</span><span>${p.locale}</span><span>${geo}</span></div>
     </div>`
 }
+
+// ---------- who is this person, and why ----------
+const TOTAL_SITE_TYPES = 16
+
+function openPersona(id) {
+  const p = castById.get(id)
+  if (!p) return
+  const r = p.rationale
+
+  const kind = p.device.isMobile ? (p.device.width >= 900 ? "tablet" : "phone") : "desktop"
+  const facts = [
+    `${kind} ${p.device.width}×${p.device.height}`,
+    p.locale,
+    p.proxyCountry ? `browsing from ${p.proxyCountry.toUpperCase()}` : "direct connection",
+    `gives up after ~${p.patience} actions`,
+  ]
+
+  const on = p.appearsOn ?? []
+  const where =
+    on.length >= TOTAL_SITE_TYPES
+      ? `<span class="all">Every kind of site.</span> Anyone can be failed this way.`
+      : on.length
+        ? `Turns up on ${on.length} of the ${TOTAL_SITE_TYPES} site types: ${on.map(esc).join(", ")}.`
+        : `Not currently in any roster.`
+
+  els.modalBody.innerHTML = `
+    <div class="m-head">
+      <span class="m-emoji">${p.emoji}</span>
+      <div>
+        <div class="m-name">${esc(p.name)}</div>
+        <div class="m-blurb">${esc(p.blurb)}</div>
+      </div>
+    </div>
+    ${r ? `<div class="m-tests"><strong>What they prove</strong>${esc(r.tests)}</div>` : ""}
+    ${r ? `<p class="m-detail">${esc(r.detail)}</p>` : ""}
+    <div class="m-section">
+      <h4>How they arrive</h4>
+      <div class="m-facts">${facts.map((f) => `<span class="m-fact">${esc(f)}</span>`).join("")}</div>
+    </div>
+    <div class="m-section">
+      <h4>Where they show up</h4>
+      <p class="m-where">${where}</p>
+    </div>`
+
+  els.modal.hidden = false
+  els.modalClose.focus()
+}
+
+function closePersona() {
+  els.modal.hidden = true
+}
+
+els.castGrid.addEventListener("click", (e) => {
+  const card = e.target.closest("[data-persona]")
+  if (card) openPersona(card.dataset.persona)
+})
+els.castGrid.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" && e.key !== " ") return
+  const card = e.target.closest("[data-persona]")
+  if (!card) return
+  e.preventDefault()
+  openPersona(card.dataset.persona)
+})
+els.modalClose.addEventListener("click", closePersona)
+els.modal.addEventListener("click", (e) => {
+  // Backdrop only — clicks inside the dialog must not dismiss it.
+  if (e.target === els.modal) closePersona()
+})
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !els.modal.hidden) closePersona()
+})
 
 // ---------- running ----------
 els.siteType.addEventListener("change", () => {

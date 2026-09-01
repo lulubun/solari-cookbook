@@ -356,3 +356,57 @@ select option { background: var(--bg-raised); color: var(--ink); }
 .acct-steps .t { font-family: var(--mono); color: var(--ink-faint); flex: none; min-width: 38px; }
 .acct-steps .a { color: var(--ink-dim); }
 .acct-note { margin-top: 16px; line-height: 1.5; }
+
+/* Cast cards open a fuller explanation of what each visitor is for. */
+.cast-hint { margin: -4px 0 0; }
+.cast-card { cursor: pointer; transition: border-color 0.15s, transform 0.08s; }
+.cast-card:hover { border-color: var(--line); }
+.cast-card:active { transform: translateY(1px); }
+.cast-card:focus-visible { outline: 2px solid var(--accent-dim); outline-offset: 2px; }
+
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(4, 5, 8, 0.72);
+  backdrop-filter: blur(3px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.modal {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  max-width: 620px; width: 100%;
+  max-height: 84vh; overflow-y: auto;
+  padding: 28px 30px 30px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
+}
+.modal-close {
+  position: absolute; top: 12px; right: 14px;
+  background: transparent; border: none; color: var(--ink-faint);
+  font-size: 26px; line-height: 1; padding: 4px 8px; border-radius: 7px;
+}
+.modal-close:hover { color: var(--ink); background: var(--bg-raised); }
+
+.m-head { display: flex; align-items: flex-start; gap: 13px; margin-bottom: 6px; padding-right: 28px; }
+.m-emoji { font-size: 30px; line-height: 1.1; }
+.m-name { font-size: 1.3rem; font-weight: 640; letter-spacing: -0.02em; }
+.m-blurb { color: var(--ink-dim); font-size: 14px; margin-top: 2px; line-height: 1.45; }
+
+.m-tests {
+  margin: 20px 0 0; padding: 13px 15px;
+  background: rgba(255, 180, 84, 0.07);
+  border: 1px solid rgba(255, 180, 84, 0.2);
+  border-radius: 9px;
+  font-size: 14.5px; line-height: 1.5;
+}
+.m-tests strong { color: var(--accent); display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px; font-weight: 600; }
+.m-detail { font-size: 14.5px; line-height: 1.62; color: var(--ink-dim); margin: 18px 0 0; }
+.m-detail em { color: var(--ink); font-style: normal; }
+
+.m-section { margin-top: 22px; }
+.m-section h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); margin: 0 0 9px; font-weight: 600; }
+.m-facts { display: flex; flex-wrap: wrap; gap: 7px; }
+.m-fact { font-family: var(--mono); font-size: 11.5px; color: var(--ink-dim); background: var(--bg-raised); border: 1px solid var(--line-soft); border-radius: 6px; padding: 4px 9px; }
+.m-where { font-size: 13px; color: var(--ink-dim); line-height: 1.6; }
+.m-where .all { color: var(--good); }
