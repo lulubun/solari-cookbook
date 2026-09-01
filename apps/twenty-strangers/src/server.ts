@@ -19,6 +19,7 @@ import { SITE_TYPES, siteTypeById } from "./site-types.js"
 import { RunQueue } from "./queue.js"
 import { SlidingWindow } from "./ratelimit.js"
 import { validateTarget, robotsAllows, UnsafeTargetError } from "./safety.js"
+import { createAccessCodeStore } from "./access-codes.js"
 import { Billing } from "./billing.js"
 import { getReplay, replayStats } from "./replay-cache.js"
 import { swarmMode } from "./engine/swarm.js"
@@ -88,6 +89,7 @@ app.get("/api/pricing", (_req, res) => {
     /** When false, house runs are free and rate-limited (no Stripe key set). */
     paymentRequired: billing !== null,
     priceUsd: billing?.priceUsd ?? 0,
+    accessCodesEnabled: config.access.codes.length > 0,
   })
 })
 
@@ -158,6 +160,7 @@ app.get("/api/health", (_req, res) => {
     queueDepth: queue.depth,
     replays: replayStats(),
     paymentRequired: billing !== null,
+    accessCodes: accessCodes.stats(),
   })
 })
 
@@ -177,6 +180,11 @@ const billing =
         publicBaseUrl: config.billing.publicBaseUrl,
       })
     : null
+
+const accessCodes = createAccessCodeStore(config.access.codes, config.access.stateDir)
+
+/** A code is a bearer credential, so guessing at it gets throttled. */
+const codeAttempts = new SlidingWindow(12, 60 * 60 * 1000)
 
 const queue = new RunQueue(config.limits.maxQueueDepth)
 const perIp = new SlidingWindow(config.limits.runsPerIpPerDay)
@@ -201,6 +209,8 @@ interface StartMessage {
   swarmSize?: number
   /** Stripe Checkout Session id, for a run that has been paid for. */
   paymentSessionId?: string
+  /** Single-use code granting one free run on the house keys. */
+  accessCode?: string
   solariApiKey?: string
   anthropicApiKey?: string
 }
@@ -245,10 +255,12 @@ wss.on("connection", (ws: WebSocket, req) => {
 
       const byo = Boolean(msg.solariApiKey && msg.anthropicApiKey)
       const paymentSessionId = msg.paymentSessionId ? String(msg.paymentSessionId) : ""
+      const accessCode = msg.accessCode ? String(msg.accessCode).trim() : ""
 
       let creds: Credentials | null = null
       let request: { target: string; objective: string; siteType: string; international: boolean; swarmSize: number } | null = null
       let paymentIntentId: string | null = null
+      let reservedCode: string | null = null
       let rateLimited = true
 
       if (paymentSessionId && billing) {
@@ -296,7 +308,32 @@ wss.on("connection", (ws: WebSocket, req) => {
         const site = siteTypeById(String(msg.siteType ?? ""))
         if (!site) return send({ type: "fatal", message: "Pick what kind of site this is." })
 
-        if (byo) {
+        if (accessCode) {
+          // A code buys one run on the house keys. The holder never sees them.
+          const throttle = codeAttempts.check(ip)
+          if (throttle) {
+            return send({ type: "fatal", message: "Too many code attempts. Try again later." })
+          }
+          const verdict = accessCodes.check(accessCode)
+          if (!verdict.ok) {
+            codeAttempts.record(ip)
+            return send({ type: "fatal", message: verdict.reason })
+          }
+          if (!accessCodes.reserve(accessCode)) {
+            return send({ type: "fatal", message: "That code was just used. Each code is good for one run." })
+          }
+          reservedCode = accessCode
+
+          creds = houseCredentials()
+          if (!creds) {
+            accessCodes.release(accessCode)
+            return send({
+              type: "fatal",
+              message: "This instance has no API keys configured, so codes can't be redeemed. Your code has not been used.",
+            })
+          }
+          rateLimited = false // The code is the authorisation.
+        } else if (byo) {
           creds = {
             solariApiKey: String(msg.solariApiKey),
             anthropicApiKey: String(msg.anthropicApiKey),
@@ -306,7 +343,7 @@ wss.on("connection", (ws: WebSocket, req) => {
         } else if (billing) {
           return send({
             type: "fatal",
-            message: "This run needs to be paid for, or run with your own API keys.",
+            message: "This run needs to be paid for, or an access code, or your own API keys.",
           })
         } else {
           creds = houseCredentials()
@@ -375,6 +412,18 @@ wss.on("connection", (ws: WebSocket, req) => {
         if (creds.bringYourOwn) byoActive--
         runId = null
         controller = null
+      }
+
+      // --- settle the code --------------------------------------------------
+      // Burn only on success. A code lost to our crash has no refund path, so
+      // a failed run hands it back rather than silently consuming it.
+      if (reservedCode) {
+        if (ranSuccessfully) {
+          accessCodes.burn(reservedCode)
+        } else {
+          accessCodes.release(reservedCode)
+          send({ type: "fatal", message: "That run failed, so your code has not been used." })
+        }
       }
 
       // --- settle the money -------------------------------------------------

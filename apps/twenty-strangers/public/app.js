@@ -20,8 +20,10 @@ const els = {
   report: $("report"),
   cancel: $("cancel-btn"),
   castGrid: $("cast-grid"),
-  byoToggle: $("byo-toggle"),
   costNote: $("cost-note"),
+  modes: $("modes"),
+  codeFields: $("code-fields"),
+  accessCode: $("access-code"),
   intlToggle: $("intl-toggle"),
   intlNote: $("intl-note"),
   siteType: $("site-type"),
@@ -34,7 +36,9 @@ const FLAG = { de: "🇩🇪", gb: "🇬🇧", jp: "🇯🇵", us: "🇺🇸", f
 
 let socket = null
 const tiles = new Map()
-let pricing = { paymentRequired: false, priceUsd: 0 }
+let pricing = { paymentRequired: false, priceUsd: 0, accessCodesEnabled: false }
+/** "pay" | "code" | "byo" */
+let mode = "pay"
 
 async function loadPricing() {
   try {
@@ -47,17 +51,34 @@ async function loadPricing() {
 
 /** The button says what it will cost, before anyone clicks it. */
 function paintPrice() {
-  const byo = els.byoToggle.checked
-  if (!pricing.paymentRequired || byo) {
+  els.codeFields.hidden = mode !== "code"
+  els.byoFields.hidden = mode !== "byo"
+
+  for (const b of els.modes.querySelectorAll(".mode")) {
+    const on = b.dataset.mode === mode
+    b.classList.toggle("is-on", on)
+    b.setAttribute("aria-checked", String(on))
+  }
+
+  if (mode === "byo") {
     els.runBtn.textContent = "Send them in"
-    els.costNote.textContent = byo
-      ? "Free — it runs on your keys and bills you directly."
-      : "A run takes ~35s and costs ~50¢ — of which the twenty browsers are about 1¢."
+    els.costNote.textContent = "Free — it runs on your keys and bills you directly."
+    return
+  }
+  if (mode === "code") {
+    els.runBtn.textContent = "Send them in"
+    els.costNote.textContent = "Free with a valid code. One run per code."
+    return
+  }
+  if (!pricing.paymentRequired) {
+    els.runBtn.textContent = "Send them in"
+    els.costNote.textContent =
+      "A run takes ~35s and costs ~50¢ — of which the twenty browsers are about 1¢."
     return
   }
   els.runBtn.textContent = `Send them in — $${pricing.priceUsd.toFixed(2)}`
   els.costNote.textContent =
-    `$${pricing.priceUsd.toFixed(2)} per run, charged only if the run succeeds. Or use your own keys for free.`
+    `$${pricing.priceUsd.toFixed(2)} per run, charged only if the run succeeds.`
 }
 
 const FAMILY_LABEL = {
@@ -114,8 +135,10 @@ function castCard(p) {
 }
 
 // ---------- running ----------
-els.byoToggle.addEventListener("change", () => {
-  els.byoFields.hidden = !els.byoToggle.checked
+els.modes.addEventListener("click", (e) => {
+  const btn = e.target.closest(".mode")
+  if (!btn) return
+  mode = btn.dataset.mode
   paintPrice()
 })
 
@@ -161,8 +184,15 @@ async function start() {
   els.grid.innerHTML = ""
   tiles.clear()
 
-  // A paid instance sends people to Stripe first. Their own keys skip it.
-  if (pricing.paymentRequired && !els.byoToggle.checked) {
+  if (mode === "code" && !els.accessCode.value.trim()) {
+    els.runBtn.disabled = false
+    setStatus("Enter your access code.", true)
+    els.accessCode.focus()
+    return
+  }
+
+  // A paid instance sends people to Stripe first. Codes and own keys skip it.
+  if (pricing.paymentRequired && mode === "pay") {
     setStatus("Taking you to checkout…")
     try {
       const res = await fetch("/api/checkout", {
@@ -211,9 +241,12 @@ function openSocket({ target, objective, siteType, paymentSessionId }) {
           siteType,
           international: els.intlToggle.checked,
         }
-    if (!paymentSessionId && els.byoToggle.checked) {
+    if (!paymentSessionId && mode === "byo") {
       msg.solariApiKey = els.solariKey.value.trim()
       msg.anthropicApiKey = els.anthropicKey.value.trim()
+    }
+    if (!paymentSessionId && mode === "code") {
+      msg.accessCode = els.accessCode.value.trim()
     }
     socket.send(JSON.stringify(msg))
   })

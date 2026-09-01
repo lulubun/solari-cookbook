@@ -111,6 +111,23 @@ not much more to win there.
 The exact number is shown at the end of every run. It's not hidden, because
 "this cost 49 cents" is a more interesting claim than "this was fast".
 
+## Three ways to run one
+
+**Pay per run.** $2, charged only if the run works. Covered below.
+
+**An access code.** A single-use code runs on the house API keys, free, and the
+holder never sees a key. Each code is good for exactly one run and is
+meaningless afterwards. Codes live in `TS_ACCESS_CODES` and are never committed.
+
+Spent codes are written to disk under `TS_STATE_DIR`, because in memory alone a
+restart would quietly make every spent code live again — not a small bug for
+something whose entire contract is "one run". A code is *reserved* while its run
+is in flight and only *burnt* once a report exists; a failed run hands it back,
+since a code lost to a crash has no refund path.
+
+**Your own API keys.** Free, unlimited by us, billed to you by Solari and
+Anthropic directly. Keys are used for that run and never stored.
+
 ## Paying for a run
 
 $2, charged only if the run actually works. No account, no email, no

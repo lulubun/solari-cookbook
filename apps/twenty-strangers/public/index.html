@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Twenty Strangers — send twenty people to your website and watch where they give up</title>
 <meta name="description" content="Twenty AI strangers visit your site at once, each on a different device, from a different country, looking for a different thing. Watch them live. Find out where they bounce." />
-<link rel="stylesheet" href="/styles.css?v=3" />
+<link rel="stylesheet" href="/styles.css?v=4" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👥</text></svg>" />
 </head>
 <body>
@@ -64,12 +64,19 @@
       </div>
 
       <div class="meta-row">
-        <label class="ghost-toggle">
-          <input type="checkbox" id="byo-toggle" />
-          <span>Use my own API keys (skips the queue)</span>
-        </label>
+        <div class="modes" id="modes" role="radiogroup" aria-label="How to pay for this run">
+          <button type="button" class="mode is-on" data-mode="pay" role="radio" aria-checked="true">Pay per run</button>
+          <button type="button" class="mode" data-mode="code" role="radio" aria-checked="false">I have a code</button>
+          <button type="button" class="mode" data-mode="byo" role="radio" aria-checked="false">My own API keys</button>
+        </div>
         <span class="cost-note" id="cost-note">A run takes ~35s and costs ~50¢ — of which the twenty browsers are about 1¢.</span>
       </div>
+
+      <div class="code-fields" id="code-fields" hidden>
+        <input id="access-code" type="text" placeholder="Access code" autocomplete="off" spellcheck="false" />
+        <p class="fine">One run per code. It runs on our keys — you never see them, and you pay nothing.</p>
+      </div>
+
       <div class="byo-fields" id="byo-fields" hidden>
         <input id="solari-key" type="password" placeholder="SOLARI_API_KEY (slr_live_…)" autocomplete="off" />
         <input id="anthropic-key" type="password" placeholder="ANTHROPIC_API_KEY (sk-ant-…)" autocomplete="off" />
@@ -112,6 +119,6 @@
   </p>
 </footer>
 
-<script type="module" src="/app.js?v=3"></script>
+<script type="module" src="/app.js?v=4"></script>
 </body>
 </html>

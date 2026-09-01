@@ -67,6 +67,20 @@ export const config = {
     maxQueueDepth: intEnv("TS_MAX_QUEUE_DEPTH", 8),
   },
 
+  access: {
+    /**
+     * Comma-separated single-use codes. Each is good for exactly one run on
+     * the house keys, free, without the holder ever seeing an API key.
+     * Never commit real codes — these live in .env.
+     */
+    codes: (process.env.TS_ACCESS_CODES ?? "")
+      .split(",")
+      .map((c) => c.trim())
+      .filter(Boolean),
+    /** Where spent codes are recorded so a restart cannot un-spend them. */
+    stateDir: process.env.TS_STATE_DIR ?? ".state",
+  },
+
   billing: {
     /**
      * What one run costs a visitor, in dollars. THE pricing dial — change this
