@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Twenty Strangers — send twenty people to your website and watch where they give up</title>
+<meta name="description" content="Twenty AI strangers visit your site at once, each on a different device, from a different country, looking for a different thing. Watch them live. Find out where they bounce." />
+<link rel="stylesheet" href="/styles.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👥</text></svg>" />
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wordmark"><span class="dot"></span> Twenty Strangers</div>
+  <nav>
+    <a href="https://getsolari.com" target="_blank" rel="noopener">Built on Solari</a>
+    <a id="nav-github" href="#" target="_blank" rel="noopener">Source</a>
+  </nav>
+</header>
+
+<main>
+  <section class="hero" id="hero">
+    <h1>Send twenty strangers<br />to your website.</h1>
+    <p class="sub">
+      Twenty cloud browsers open at once. Each carries a different person — a different
+      screen, a different country, a different reason for showing up. Watch them all at
+      the same time, then read where every one of them gave up.
+    </p>
+
+    <form id="run-form" class="runner" autocomplete="off">
+      <div class="field-row">
+        <input
+          id="target"
+          name="target"
+          type="text"
+          placeholder="yoursite.com"
+          spellcheck="false"
+          required
+        />
+        <button type="submit" id="run-btn">Send them in</button>
+      </div>
+      <input
+        id="objective"
+        name="objective"
+        type="text"
+        placeholder="Optional: what should they be trying to do? e.g. “work out if this is worth paying for”"
+        maxlength="200"
+      />
+      <div class="meta-row">
+        <label class="ghost-toggle">
+          <input type="checkbox" id="byo-toggle" />
+          <span>Use my own API keys (skips the queue)</span>
+        </label>
+        <span class="cost-note" id="cost-note">A run costs about 30¢ of cloud browser time.</span>
+      </div>
+      <div class="byo-fields" id="byo-fields" hidden>
+        <input id="solari-key" type="password" placeholder="SOLARI_API_KEY (slr_live_…)" autocomplete="off" />
+        <input id="anthropic-key" type="password" placeholder="ANTHROPIC_API_KEY (sk-ant-…)" autocomplete="off" />
+        <p class="fine">Keys are used for this run only and never stored on the server.</p>
+      </div>
+    </form>
+
+    <p class="status" id="status" role="status" aria-live="polite"></p>
+    <p class="fine consent-note">
+      Only point this at sites you own or public marketing pages. The strangers read,
+      scroll, and follow links — they never buy, submit, or send anything.
+    </p>
+  </section>
+
+  <section class="stage" id="stage" hidden>
+    <div class="stage-head">
+      <h2 id="stage-title">Twenty strangers are looking at your site</h2>
+      <button id="cancel-btn" class="ghost-btn">Stop</button>
+    </div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section class="report" id="report" hidden></section>
+
+  <section class="cast" id="cast">
+    <h2>The cast</h2>
+    <p class="sub narrow">
+      Twenty people chosen so their failures don't overlap. Between them they cover
+      findability, mobile layout, consent banners, keyboard access, jargon, and the
+      dead ends people hit when they need a human.
+    </p>
+    <div class="cast-grid" id="cast-grid"></div>
+  </section>
+</main>
+
+<footer>
+  <p>
+    Built on <a href="https://getsolari.com" target="_blank" rel="noopener">Solari</a> —
+    cloud browsers, sandboxes, and desktops behind one API key.
+  </p>
+</footer>
+
+<script type="module" src="/app.js"></script>
+</body>
+</html>

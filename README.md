@@ -7,6 +7,28 @@ Every example in this repo is a complete program you can run in under a minute.
 They are deliberately small: one idea each, no framework, no scaffolding to read
 past. Copy one into your project and change the parts you care about.
 
+---
+
+## 👥 Twenty Strangers
+
+**[apps/twenty-strangers](apps/twenty-strangers)** — a full application built on
+this SDK, added in this fork.
+
+Send twenty strangers to your website and watch where they give up. Twenty cloud
+browsers open at once, each carrying a different person — a different screen, a
+different country, a different reason for showing up. Watch all twenty at the
+same time, then read where every one of them gave up.
+
+One agent visiting your site is an anecdote. Twenty independently failing to find
+your pricing is a fact. A run takes about 90 seconds and costs about 30 cents.
+
+```bash
+cd apps/twenty-strangers && npm install
+TS_MOCK=1 npm start        # the whole thing, no keys, no spend
+```
+
+---
+
 ## Examples
 
 ### Cloud browser
@@ -18,6 +40,7 @@ past. Copy one into your project and change the parts you care about.
 | [browser-stealth-proxy-ts](examples/browser-stealth-proxy-ts) | TypeScript | Stealth mode + residential proxy egress |
 | [browser-profiles-ts](examples/browser-profiles-ts) | TypeScript | Log in once, reuse the session forever |
 | [browser-session-recording-py](examples/browser-session-recording-py) | Python | Record a session, download the replay |
+| [browser-swarm-ts](examples/browser-swarm-ts) | TypeScript | Fan out with a worker pool, survive concurrency limits |
 
 ### Sandbox
 
@@ -75,6 +98,9 @@ Things that cost you an afternoon if you meet them cold:
   channel; the VM keeps running until its idle timeout.
 - **`timeoutMs` is a rolling idle window**, not a hard deadline — it resets on
   every use.
+- **`ConcurrencyLimitExceeded` is a normal condition**, not a bug. A swarm sized
+  to your plan's ceiling will race itself while earlier sessions are releasing.
+  Back off and retry rather than dropping the work.
 
 ## Links
 

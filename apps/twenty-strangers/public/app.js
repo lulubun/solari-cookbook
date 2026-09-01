@@ -1,0 +1,307 @@
+/**
+ * Twenty Strangers — client.
+ *
+ * The UI is a pure function of the event stream. Nothing here asks the server
+ * for state; it only reacts to events in order. That is what lets a recorded
+ * run replay through exactly the same code path as a live one.
+ */
+
+const $ = (id) => document.getElementById(id)
+
+const els = {
+  form: $("run-form"),
+  target: $("target"),
+  objective: $("objective"),
+  runBtn: $("run-btn"),
+  status: $("status"),
+  stage: $("stage"),
+  stageTitle: $("stage-title"),
+  grid: $("grid"),
+  report: $("report"),
+  cancel: $("cancel-btn"),
+  castGrid: $("cast-grid"),
+  byoToggle: $("byo-toggle"),
+  byoFields: $("byo-fields"),
+  solariKey: $("solari-key"),
+  anthropicKey: $("anthropic-key"),
+}
+
+const FLAG = { de: "🇩🇪", gb: "🇬🇧", jp: "🇯🇵", us: "🇺🇸", fr: "🇫🇷", br: "🇧🇷" }
+
+let socket = null
+const tiles = new Map()
+
+// ---------- the cast ----------
+async function loadCast() {
+  try {
+    const res = await fetch("/api/personas")
+    const personas = await res.json()
+    els.castGrid.innerHTML = personas.map(castCard).join("")
+  } catch {
+    els.castGrid.innerHTML = '<p class="fine">Could not load the cast.</p>'
+  }
+}
+
+function deviceLabel(p) {
+  const kind = p.device.isMobile ? (p.device.width >= 900 ? "tablet" : "phone") : "desktop"
+  return `${kind} ${p.device.width}×${p.device.height}`
+}
+
+function castCard(p) {
+  const geo = p.proxyCountry ? `${FLAG[p.proxyCountry] ?? ""} ${p.proxyCountry.toUpperCase()}` : "direct"
+  return `
+    <div class="cast-card">
+      <div class="top"><span>${p.emoji}</span><span class="nm">${esc(p.name)}</span></div>
+      <p>${esc(p.blurb)}</p>
+      <div class="spec"><span>${deviceLabel(p)}</span><span>${p.locale}</span><span>${geo}</span></div>
+    </div>`
+}
+
+// ---------- running ----------
+els.byoToggle.addEventListener("change", () => {
+  els.byoFields.hidden = !els.byoToggle.checked
+})
+
+els.form.addEventListener("submit", (e) => {
+  e.preventDefault()
+  start()
+})
+
+els.cancel.addEventListener("click", () => {
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({ type: "cancel" }))
+  }
+  setStatus("Stopping…")
+})
+
+function start() {
+  const target = els.target.value.trim()
+  if (!target) return
+
+  els.runBtn.disabled = true
+  els.report.hidden = true
+  els.report.innerHTML = ""
+  els.grid.innerHTML = ""
+  tiles.clear()
+  setStatus("Waking up twenty browsers…")
+
+  const proto = location.protocol === "https:" ? "wss:" : "ws:"
+  socket = new WebSocket(`${proto}//${location.host}/ws`)
+
+  socket.addEventListener("open", () => {
+    const msg = {
+      type: "start",
+      target,
+      objective: els.objective.value.trim(),
+    }
+    if (els.byoToggle.checked) {
+      msg.solariApiKey = els.solariKey.value.trim()
+      msg.anthropicApiKey = els.anthropicKey.value.trim()
+    }
+    socket.send(JSON.stringify(msg))
+  })
+
+  socket.addEventListener("message", (ev) => {
+    let e
+    try { e = JSON.parse(ev.data) } catch { return }
+    handle(e)
+  })
+
+  socket.addEventListener("close", () => {
+    els.runBtn.disabled = false
+  })
+
+  socket.addEventListener("error", () => {
+    setStatus("Connection failed.", true)
+    els.runBtn.disabled = false
+  })
+}
+
+function handle(e) {
+  switch (e.type) {
+    case "fatal":
+    case "run:error":
+      setStatus(e.message, true)
+      els.runBtn.disabled = false
+      break
+
+    case "run:queued":
+      setStatus(
+        e.position === 0
+          ? "Next up — starting in a moment…"
+          : `You're #${e.position} in the queue — about ${Math.ceil(e.etaSeconds / 60)} min. ` +
+            `One run uses all twenty browsers, so they go one at a time.`,
+      )
+      break
+
+    case "run:started":
+      els.stage.hidden = false
+      els.stageTitle.textContent = `Twenty strangers are looking at ${hostOf(e.target)}`
+      els.grid.innerHTML = ""
+      for (const p of e.personas) createTile(p)
+      setStatus("They're in.")
+      els.stage.scrollIntoView({ behavior: "smooth", block: "start" })
+      break
+
+    case "persona:started": {
+      const t = tiles.get(e.personaId)
+      if (t) {
+        t.root.classList.add("active")
+        t.screen.innerHTML = '<span class="placeholder">opening a browser…</span>'
+        t.foot.innerHTML = '<span class="pulse"></span><span class="action">arriving…</span>'
+      }
+      break
+    }
+
+    case "persona:frame": {
+      const t = tiles.get(e.personaId)
+      if (t) {
+        if (!t.img) {
+          t.screen.innerHTML = ""
+          t.img = document.createElement("img")
+          t.img.alt = ""
+          t.screen.appendChild(t.img)
+        }
+        t.img.src = `data:image/jpeg;base64,${e.jpegBase64}`
+      }
+      break
+    }
+
+    case "persona:step": {
+      const t = tiles.get(e.personaId)
+      if (t) {
+        t.foot.innerHTML = `<span class="pulse"></span><span class="action">${esc(e.action)}</span>`
+      }
+      break
+    }
+
+    case "persona:done": {
+      const t = tiles.get(e.personaId)
+      if (t) {
+        const ok = e.result.verdict.completed
+        t.root.classList.remove("active")
+        t.root.classList.add("done", ok ? "pass" : "fail")
+        // Freeze the last frame if we ever got one; otherwise the tile still
+        // has to say something, so it says how it ended.
+        if (!t.img) {
+          t.screen.innerHTML =
+            `<span class="outcome-glyph ${ok ? "pass" : "fail"}">${ok ? "✓" : "✗"}</span>`
+        }
+        t.foot.innerHTML = `<span class="quote">“${esc(e.result.verdict.quote)}”</span>`
+      }
+      break
+    }
+
+    case "run:done":
+      renderReport(e.report)
+      setStatus("")
+      els.runBtn.disabled = false
+      break
+  }
+}
+
+function createTile(p) {
+  const root = document.createElement("div")
+  root.className = "tile"
+  const geo = p.proxyCountry ? (FLAG[p.proxyCountry] ?? p.proxyCountry.toUpperCase()) : ""
+  root.innerHTML = `
+    <div class="tile-head">
+      <span class="tile-emoji">${p.emoji}</span>
+      <span class="tile-name">${esc(p.name)}</span>
+      <span class="tile-flag">${geo}</span>
+    </div>
+    <div class="tile-screen"><span class="placeholder">waiting</span></div>
+    <div class="tile-foot"><span class="action">queued</span></div>`
+  els.grid.appendChild(root)
+  tiles.set(p.id, {
+    root,
+    screen: root.querySelector(".tile-screen"),
+    foot: root.querySelector(".tile-foot"),
+    img: null,
+  })
+}
+
+// ---------- report ----------
+function renderReport(r) {
+  const pct = Math.round(r.completionRate * 100)
+  const cls = pct >= 70 ? "good" : pct >= 40 ? "mid" : "bad"
+  const secs = Math.round(r.durationMs / 1000)
+  const done = r.results.filter((x) => x.verdict.completed).length
+
+  const themes = r.themes
+    .map(
+      (t) => `
+      <div class="theme">
+        <div class="theme-count">${t.raisedBy.length}×</div>
+        <div class="theme-body">
+          <h4>${esc(t.headline)}<span class="sev ${t.severity}">${t.severity}</span></h4>
+          <p>Raised by ${esc(t.raisedBy.join(", "))}</p>
+        </div>
+      </div>`,
+    )
+    .join("")
+
+  const verdicts = r.results
+    .map((x) => {
+      const ok = x.verdict.completed
+      const replay = x.replayUrl
+        ? `<a class="replay" href="${esc(x.replayUrl)}" target="_blank" rel="noopener">Watch the replay →</a>`
+        : ""
+      return `
+      <div class="verdict ${ok ? "pass" : "fail"}">
+        <div class="verdict-head">
+          <span>${x.persona.emoji}</span>
+          <span class="name">${esc(x.persona.name)}</span>
+          <span class="outcome">${ok ? "got there" : "gave up"} · ${x.steps} steps</span>
+        </div>
+        <blockquote>“${esc(x.verdict.quote)}”</blockquote>
+        <div class="where">Stopped at ${esc(x.verdict.stoppedAt)}</div>
+        ${replay}
+      </div>`
+    })
+    .join("")
+
+  els.report.innerHTML = `
+    <div class="score-row">
+      <div class="score">
+        <span class="n ${cls}">${pct}%</span>
+        <span class="l">got what they came for</span>
+      </div>
+      <div class="score">
+        <span class="n">${done}<span style="color:var(--ink-faint)">/${r.results.length}</span></span>
+        <span class="l">strangers succeeded</span>
+      </div>
+      <div class="score">
+        <span class="n">${secs}s</span>
+        <span class="l">all of them, in parallel</span>
+      </div>
+      <div class="score">
+        <span class="n">$${r.cost.estimatedUsd.toFixed(2)}</span>
+        <span class="l">cost to find out</span>
+      </div>
+    </div>
+    <h3>What kept coming up</h3>
+    ${themes || '<p class="fine">No shared friction — unusual, and a good sign.</p>'}
+    <h3>What each of them said</h3>
+    <div class="verdicts">${verdicts}</div>`
+  els.report.hidden = false
+  els.report.scrollIntoView({ behavior: "smooth", block: "start" })
+}
+
+// ---------- helpers ----------
+function setStatus(text, isError = false) {
+  els.status.textContent = text
+  els.status.classList.toggle("error", isError)
+}
+
+function hostOf(u) {
+  try { return new URL(u).hostname } catch { return u }
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+  )
+}
+
+loadCast()
