@@ -17,7 +17,7 @@
  * everyone else goes direct.
  */
 
-import type { SiteFamily } from "./site-types.js"
+import type { SiteCapabilities, SiteFamily, SiteType } from "./site-types.js"
 
 export interface Persona {
   id: string
@@ -35,6 +35,15 @@ export interface Persona {
    * actually work.
    */
   missionByFamily?: Partial<Record<SiteFamily, string>>
+  /**
+   * Capabilities this person's whole reason for visiting depends on.
+   *
+   * Someone who only wants to sign in is not a useful visitor to a site with
+   * no accounts, and someone hunting the price is not useful where nothing is
+   * sold. Rather than give them a limp substitute errand, they stand down and
+   * the bench sends someone the site can actually frustrate.
+   */
+  requires?: Array<keyof SiteCapabilities>
   /** Behavioural instructions handed to the agent loop verbatim. */
   temperament: string
   device: {
@@ -79,6 +88,7 @@ export const PERSONAS: Persona[] = [
         "Find the real total — item price plus shipping plus anything else that appears at the last step.",
       content: "Work out whether this is free, ad-funded, or going to ask me for money later.",
     },
+    requires: ["pricing"] as const,
     temperament:
       "You are looking for concrete pricing. You are deeply unimpressed by 'Contact us for pricing' and will say so. You refuse to fill in any lead-capture form. If pricing is hidden behind a demo request, that is a failure and you report it.",
     device: { width: 1440, height: 900, isMobile: false },
@@ -188,6 +198,7 @@ export const PERSONAS: Persona[] = [
         "Find a discount code, a sale section, free shipping, or any way to pay less than list price.",
       content: "Find out how much is free before anything asks me to pay or subscribe.",
     },
+    requires: ["pricing"] as const,
     temperament:
       "You are hunting for a way to try this without paying. You look for free tiers, trials, student or startup discounts. If there is no way to try before buying, that is a significant finding.",
     device: { width: 1440, height: 900, isMobile: false },
@@ -206,6 +217,7 @@ export const PERSONAS: Persona[] = [
         "Establish whether this is a real trading company — registration, terms, returns policy, and a way to invoice.",
       content: "Establish who publishes this, on whose authority, and whether it can be cited.",
     },
+    requires: ["enterprise"] as const,
     temperament:
       "You evaluate vendors for a big company. You look for SSO, compliance badges, security documentation, uptime commitments, and a real sales contact. Absence of these is disqualifying and you say so.",
     device: { width: 1440, height: 900, isMobile: false },
@@ -238,6 +250,7 @@ export const PERSONAS: Persona[] = [
       content:
         "Look at how this is built and distributed — is there a feed, an export, an API, permalinks that will still resolve next year?",
     },
+    requires: ["docs"] as const,
     temperament:
       "You ignore marketing copy completely and look for technical substance: documentation, a quickstart, code samples, an OpenAPI spec, a GitHub link. Report how many clicks it took to see actual code, if you ever did.",
     device: { width: 1680, height: 1050, isMobile: false },
@@ -251,6 +264,7 @@ export const PERSONAS: Persona[] = [
     emoji: "🧭",
     blurb: "Not a customer. Wants to know if you're hiring.",
     mission: "Find out who works here and whether there are open roles.",
+    requires: ["careers"] as const,
     temperament:
       "You are evaluating this company as a place to work. You look for careers, team, and about pages, and for a sense of what the company is actually like. Report dead ends.",
     device: { width: 1440, height: 900, isMobile: false },
@@ -269,6 +283,7 @@ export const PERSONAS: Persona[] = [
         "Find out how I'd return something or chase an order that never arrived, and how to reach a human about it.",
       content: "Find a way to report a problem or reach someone who runs this.",
     },
+    requires: ["support"] as const,
     temperament:
       "You have an urgent problem and need help now. You look for support, help, contact, or live chat. A contact form with no response-time promise frustrates you. Report exactly how you would reach a human, or that you could not.",
     device: { width: 1440, height: 900, isMobile: false },
@@ -338,6 +353,7 @@ export const PERSONAS: Persona[] = [
       commerce: "Find the sign-in, and whether I can check an existing order without one.",
       content: "Find the sign-in without being pushed into creating a second account.",
     },
+    requires: ["accounts"] as const,
     temperament:
       "You already have an account and only want to sign in. You are irritated by pages that push signup while hiding login. Report how prominent the login entry point was. Do not actually attempt credentials.",
     device: { width: 1440, height: 900, isMobile: false },
@@ -418,12 +434,150 @@ export const DOMESTIC_ALTERNATES: Persona[] = [
       commerce: "Work out whether they take the payment method I use and deliver where I actually live.",
       content: "Work out whether I can follow this where I already read things, rather than somewhere new.",
     },
+    requires: ["accounts"] as const,
     temperament:
       "You are not starting from scratch and you are not switching everything. You look for integrations, imports, exports, supported platforms, and whether you can leave later with your data. A product that assumes it is your only tool is a problem, and you name it.",
     device: { width: 1680, height: 1050, isMobile: false },
     locale: "en-US",
     proxyCountry: null,
     patience: 10,
+  },
+]
+
+
+/**
+ * The bench.
+ *
+ * When a site has no prices, no accounts, or no documentation, the visitors
+ * who exist to probe those things are stood down — and someone the site can
+ * actually frustrate takes the slot. The bench keeps the swarm at twenty and
+ * keeps every one of them relevant, which matters more than keeping the same
+ * twenty faces on every kind of site.
+ *
+ * Four are specialists, called up only where their thing exists. Five are
+ * universal — every site, of every kind, can fail these people.
+ */
+export const BENCH: Persona[] = [
+  {
+    id: "hours-and-directions",
+    name: "Cass",
+    emoji: "🕗",
+    blurb: "Standing outside, phone in hand, wondering if you're open.",
+    mission: "Find out where this is, when it's open, and how I get in.",
+    requires: ["location"] as const,
+    temperament:
+      "You need practical facts and you need them now: the address, today's hours, parking, and whether you can get in with a pushchair or a wheelchair. Marketing copy is noise. Hours buried in an image or a PDF are useless to you, and hours that don't say whether they mean today are worse.",
+    device: { width: 390, height: 844, isMobile: true, deviceScaleFactor: 3 },
+    locale: "en-US",
+    proxyCountry: null,
+    patience: 7,
+  },
+  {
+    id: "would-i-attend",
+    name: "Omar",
+    emoji: "🎟️",
+    blurb: "Deciding whether to give up a Saturday for this.",
+    mission: "Work out what's actually happening, when, where, and whether to go.",
+    requires: ["events"] as const,
+    temperament:
+      "You want the schedule, the venue, and the real cost of attending. Vague 'coming soon' framing and dates without years frustrate you. You want to know what you'd actually be doing on the day.",
+    device: { width: 1440, height: 900, isMobile: false },
+    locale: "en-US",
+    proxyCountry: null,
+    patience: 9,
+  },
+  {
+    id: "fact-checker",
+    name: "Delphine",
+    emoji: "📎",
+    blurb: "Needs to cite this, so needs to know if she can.",
+    mission: "Find out who wrote this, when, and whether it can be trusted.",
+    requires: ["editorial"] as const,
+    temperament:
+      "You are assessing whether this is quotable. You look for authorship, dates, sources, and corrections. Undated content is a serious problem for you, and so is content that cites nothing. You say plainly whether you would be willing to rely on this.",
+    device: { width: 1440, height: 900, isMobile: false },
+    locale: "en-US",
+    proxyCountry: null,
+    patience: 10,
+  },
+  {
+    id: "listing-hunter",
+    name: "Rafi",
+    emoji: "🔦",
+    blurb: "Looking for one specific thing among many.",
+    mission: "Find the one entry I actually want, using search and filters.",
+    requires: ["listings"] as const,
+    temperament:
+      "You go straight for search and filters and you judge them harshly. Filters that don't narrow anything, searches that return everything or nothing, results you cannot sort, and listings too thin to choose between — these are your findings. Report whether you could actually get to one specific thing.",
+    device: { width: 1440, height: 900, isMobile: false },
+    locale: "en-US",
+    proxyCountry: null,
+    patience: 10,
+  },
+  {
+    id: "is-this-official",
+    name: "June",
+    emoji: "🛡️",
+    blurb: "Not sure this is the real site and not taking chances.",
+    mission: "Work out whether this is the genuine, official site for who it claims to be.",
+    temperament:
+      "You have been caught by a lookalike site before. You look for signs this is genuine: a real organisation named, contact details that match, a coherent domain, and content that is plausibly maintained. Anything that feels off, you name it.",
+    device: { width: 1440, height: 900, isMobile: false },
+    locale: "en-US",
+    proxyCountry: null,
+    patience: 8,
+  },
+  {
+    id: "reach-a-person",
+    name: "Malik",
+    emoji: "📇",
+    blurb: "Needs to reach one particular person or department.",
+    mission: "Find the right person or department to talk to, and how to reach them.",
+    temperament:
+      "A generic enquiry form is not what you want. You are trying to reach a specific team or role, and you want a named route to them — a direct email, a phone number, a department page. Report how close you got.",
+    device: { width: 1440, height: 900, isMobile: false },
+    locale: "en-US",
+    proxyCountry: null,
+    patience: 8,
+  },
+  {
+    id: "deciding-for-someone",
+    name: "Sofia",
+    emoji: "👪",
+    blurb: "Deciding on behalf of someone else, so needs to be sure.",
+    mission: "Work out whether this is right for the person I'm deciding for.",
+    temperament:
+      "You are not the end user — you are choosing for a child, a parent, or someone you look after. You need practical specifics: who it suits, what is required, what could go wrong, and who to ask. You are cautious and you dislike being asked to commit before you understand.",
+    device: { width: 1440, height: 900, isMobile: false },
+    locale: "en-US",
+    proxyCountry: null,
+    patience: 10,
+  },
+  {
+    id: "one-fact",
+    name: "Ted",
+    emoji: "📌",
+    blurb: "Came for exactly one fact and intends to leave immediately.",
+    mission: "Find the single specific thing I came for, then go.",
+    temperament:
+      "You have one question and no interest in anything else on the page. Newsletter prompts, chat bubbles, and cookie walls between you and the answer are all obstacles worth reporting. Judge purely on how fast the site let you get your answer and leave.",
+    device: { width: 1440, height: 900, isMobile: false },
+    locale: "en-US",
+    proxyCountry: null,
+    patience: 6,
+  },
+  {
+    id: "still-maintained",
+    name: "Nia",
+    emoji: "🕸️",
+    blurb: "Wants to know if anyone still runs this.",
+    mission: "Work out whether this site is actually current or quietly abandoned.",
+    temperament:
+      "You look for signs of life: recent dates, working links, current years in the footer, content that has not gone stale. Dead links, copyright years long past, and 'coming soon' sections that clearly never came are exactly what you report.",
+    device: { width: 1440, height: 900, isMobile: false },
+    locale: "en-US",
+    proxyCountry: null,
+    patience: 9,
   },
 ]
 
@@ -448,18 +602,48 @@ export function missionFor(p: Persona, family: SiteFamily): string {
  * swapped out positionally for the domestic alternates, so the swarm stays
  * exactly the same size and the grid still fills.
  */
-export function rosterFor(international: boolean): Persona[] {
-  if (international) return PERSONAS
-  const alternates = [...DOMESTIC_ALTERNATES]
-  return PERSONAS.map((p) => (isInternational(p) ? (alternates.shift() ?? p) : p))
+export function fits(p: Persona, has: SiteCapabilities): boolean {
+  return (p.requires ?? []).every((cap) => has[cap])
 }
 
-export function pickSwarm(size: number, international = true): Persona[] {
-  const roster = rosterFor(international)
+/**
+ * The roster for a run.
+ *
+ * Two independent swaps. International visitors can be switched off, which
+ * substitutes domestic stand-ins positionally. Then anyone whose reason for
+ * visiting does not exist on this kind of site stands down, and the bench
+ * fills the gap — specialists whose thing this site has, first; universals
+ * after. The swarm stays twenty either way.
+ */
+export function rosterFor(international: boolean, site?: SiteType): Persona[] {
+  const alternates = [...DOMESTIC_ALTERNATES]
+  const base = international
+    ? PERSONAS
+    : PERSONAS.map((p) => (isInternational(p) ? (alternates.shift() ?? p) : p))
+
+  if (!site) return base
+
+  const kept = base.filter((p) => fits(p, site.has))
+  const gaps = base.length - kept.length
+  if (gaps <= 0) return kept
+
+  const alreadyIn = new Set(kept.map((p) => p.id))
+  const available = BENCH.filter((p) => !alreadyIn.has(p.id) && fits(p, site.has))
+  // Specialists first: someone called up *because* this site has listings is
+  // more use than another generalist.
+  const ordered = [
+    ...available.filter((p) => (p.requires ?? []).length > 0),
+    ...available.filter((p) => (p.requires ?? []).length === 0),
+  ]
+
+  return [...kept, ...ordered.slice(0, gaps)]
+}
+
+export function pickSwarm(size: number, international = true, site?: SiteType): Persona[] {
+  const roster = rosterFor(international, site)
   if (size >= roster.length) return roster
   // Keep the spread meaningful when running a smaller swarm: take an even
-  // stride through the list rather than the first N, which would be all
-  // desktop English speakers.
+  // stride rather than the first N, which would be all desktop English speakers.
   const stride = roster.length / size
   const out: Persona[] = []
   for (let i = 0; i < size; i++) {

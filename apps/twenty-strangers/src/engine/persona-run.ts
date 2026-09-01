@@ -26,7 +26,7 @@ import { needsStealth } from "../personas.js"
 import { runPersonaLoop } from "../agent/loop.js"
 import { TokenMeter } from "../agent/llm.js"
 import { USER_AGENT_TOKEN } from "../safety.js"
-import { storeReplay } from "../replay-cache.js"
+import { annotateReplay, storeReplay } from "../replay-cache.js"
 
 const FRAME_INTERVAL_MS = 700
 
@@ -102,6 +102,9 @@ export async function runPersona(opts: PersonaRunOptions): Promise<PersonaResult
       // No live view for this persona; carry on.
     }
 
+    const stepLog: Array<{ n: number; action: string; atMs: number }> = []
+    const visitStart = Date.now()
+
     await page.goto(opts.target, { waitUntil: "domcontentloaded", timeout: 30_000 })
 
     const { verdict, steps } = await runPersonaLoop(page, {
@@ -115,8 +118,10 @@ export async function runPersona(opts: PersonaRunOptions): Promise<PersonaResult
       deadline,
       meter: opts.meter,
       signal,
-      onStep: (step, thought, action) =>
-        emit({ type: "persona:step", personaId: persona.id, step, thought, action }),
+      onStep: (step, thought, action) => {
+        stepLog.push({ n: step, action, atMs: Date.now() - visitStart })
+        emit({ type: "persona:step", personaId: persona.id, step, thought, action })
+      },
     })
 
     // Release before asking for the replay — the recording is only finalised
@@ -125,6 +130,17 @@ export async function runPersona(opts: PersonaRunOptions): Promise<PersonaResult
     browser = null
 
     const replayUrl = sessionId ? await captureReplay(solari, sessionId) : undefined
+    if (sessionId && replayUrl) {
+      annotateReplay(sessionId, {
+        personaName: persona.name,
+        emoji: persona.emoji,
+        mission: persona.mission,
+        quote: verdict.quote,
+        stoppedAt: verdict.stoppedAt,
+        completed: verdict.completed,
+        steps: stepLog,
+      })
+    }
 
     const result: PersonaResult = {
       persona,

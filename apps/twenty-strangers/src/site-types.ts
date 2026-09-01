@@ -1,20 +1,48 @@
 /**
- * What kind of site is this?
+ * What kind of site is this, and what does that kind of site even have?
  *
- * Twenty strangers arriving at an API reference want completely different
- * things than twenty strangers arriving at a florist's shop. Without knowing
- * which, the personas default to SaaS-shaped assumptions and produce findings
- * that are technically true and practically useless — "I couldn't find the
- * pricing tiers" is not a helpful note about a museum's opening hours.
+ * Site types alone are not enough. The useful question is not "is this a
+ * school or a shop" but "does this site have prices, accounts, documentation,
+ * a physical address" — because that is what decides whether a given visitor
+ * makes any sense at all.
  *
- * Site types are grouped into three FAMILIES. Families are what personas
- * branch their behaviour on, because the difference that matters to a visitor
- * is "am I buying, learning, or reading" — not the twelve-way distinction.
- * The specific type still reaches the prompt, so a persona on a booking site
- * knows to look for availability rather than a cart.
+ * A visitor who only wants to log in is absurd on a site with no accounts. A
+ * visitor hunting for the price is absurd where nothing is sold. Rather than
+ * writing twenty personas times sixteen site types of special cases, each site
+ * type declares its CAPABILITIES and each persona declares what it depends on.
+ * Personas whose dependency is missing are stood down and replaced by someone
+ * the site can actually frustrate.
+ *
+ * Families remain, because behaviour that survives the capability check still
+ * differs between buying, learning, and reading.
  */
 
 export type SiteFamily = "commerce" | "technical" | "content"
+
+export interface SiteCapabilities {
+  /** Users can have an account and sign in. */
+  accounts: boolean
+  /** Things here have a price. */
+  pricing: boolean
+  /** You can actually transact on the site. */
+  purchase: boolean
+  /** Technical documentation is a thing this site would have. */
+  docs: boolean
+  /** A support or help channel is reasonable to expect. */
+  support: boolean
+  /** A physical place matters — address, hours, getting there. */
+  location: boolean
+  /** A searchable catalogue of entries is the point. */
+  listings: boolean
+  /** Written content is the product, not the wrapper. */
+  editorial: boolean
+  /** Sold to organisations, so SSO and compliance are fair questions. */
+  enterprise: boolean
+  /** Hiring information is plausibly present. */
+  careers: boolean
+  /** Dates, schedules, and attendance matter. */
+  events: boolean
+}
 
 export interface SiteType {
   id: string
@@ -24,9 +52,19 @@ export interface SiteType {
   primaryAction: string
   /** What visitors to this kind of site routinely check. */
   expectations: string[]
+  has: SiteCapabilities
 }
 
+/** Everything off; each type switches on only what it really has. */
+const NONE: SiteCapabilities = {
+  accounts: false, pricing: false, purchase: false, docs: false, support: false,
+  location: false, listings: false, editorial: false, enterprise: false,
+  careers: false, events: false,
+}
+const caps = (o: Partial<SiteCapabilities>): SiteCapabilities => ({ ...NONE, ...o })
+
 export const SITE_TYPES: SiteType[] = [
+  // ---------------- technical ----------------
   {
     id: "saas",
     label: "SaaS product",
@@ -37,6 +75,7 @@ export const SITE_TYPES: SiteType[] = [
       "transparent pricing and whether there is a free tier",
       "proof it is credible — customers, security, uptime",
     ],
+    has: caps({ accounts: true, pricing: true, purchase: true, docs: true, support: true, enterprise: true, careers: true }),
   },
   {
     id: "api-docs",
@@ -44,10 +83,11 @@ export const SITE_TYPES: SiteType[] = [
     family: "technical",
     primaryAction: "find how to do a specific thing and see working code",
     expectations: [
-      "a quickstart that gets to a first working call fast",
-      "searchable reference with real request and response examples",
+      "a quickstart that reaches a first working call quickly",
+      "searchable reference with real requests and responses",
       "authentication, errors, rate limits, and versioning",
     ],
+    has: caps({ accounts: true, docs: true, support: true, listings: true, enterprise: true }),
   },
   {
     id: "open-source",
@@ -55,14 +95,17 @@ export const SITE_TYPES: SiteType[] = [
     family: "technical",
     primaryAction: "judge whether the project is alive and worth adopting",
     expectations: [
-      "what it does and how it differs from alternatives",
-      "install steps and a minimal example",
+      "what it does and how it differs from the alternatives",
+      "install steps and a minimal working example",
       "signs of maintenance — recent activity, issues, licence",
     ],
+    has: caps({ docs: true, support: true, editorial: true }),
   },
+
+  // ---------------- commerce ----------------
   {
     id: "online-store",
-    label: "Online store",
+    label: "E-commerce store",
     family: "commerce",
     primaryAction: "find a product and understand the cost of getting it",
     expectations: [
@@ -70,6 +113,7 @@ export const SITE_TYPES: SiteType[] = [
       "total price including shipping, plus delivery times",
       "returns, refunds, and whether other people trust this shop",
     ],
+    has: caps({ accounts: true, pricing: true, purchase: true, support: true, listings: true, careers: true }),
   },
   {
     id: "local-business",
@@ -77,10 +121,11 @@ export const SITE_TYPES: SiteType[] = [
     family: "commerce",
     primaryAction: "find the address, opening hours, and how to get in touch",
     expectations: [
-      "address, map, parking, and accessibility of the premises",
+      "address, map, parking, and whether the premises are accessible",
       "opening hours, including today's",
-      "phone number, and what they actually sell or do",
+      "a phone number, and what they actually sell or do",
     ],
+    has: caps({ pricing: true, support: true, location: true, careers: true }),
   },
   {
     id: "booking",
@@ -92,28 +137,57 @@ export const SITE_TYPES: SiteType[] = [
       "the full price before committing, including fees",
       "cancellation terms and what happens if plans change",
     ],
+    has: caps({ accounts: true, pricing: true, purchase: true, support: true, location: true, events: true }),
   },
   {
-    id: "marketing-site",
-    label: "Company or startup marketing site",
-    family: "content",
-    primaryAction: "work out what this company does and whether to care",
+    id: "directory",
+    label: "Directory or listings",
+    family: "commerce",
+    primaryAction: "find a specific listing and act on it",
     expectations: [
-      "a clear statement of what is being offered",
-      "who is behind it and whether they are real",
-      "an obvious next step for an interested visitor",
+      "search and filters that actually narrow things down",
+      "listings with enough detail to choose between them",
+      "how current the listings are, and who vouches for them",
     ],
+    has: caps({ accounts: true, support: true, location: true, listings: true }),
+  },
+
+  // ---------------- content ----------------
+  {
+    id: "business-corporate",
+    label: "Business or corporate site",
+    family: "content",
+    primaryAction: "work out what this company does and how to contact them",
+    expectations: [
+      "what the company offers, in concrete terms",
+      "who they are and whether they are credible",
+      "a real way to get in touch",
+    ],
+    has: caps({ support: true, location: true, enterprise: true, careers: true, pricing: true }),
   },
   {
-    id: "news-publication",
-    label: "News site or publication",
+    id: "landing-page",
+    label: "Landing page (single call to action)",
+    family: "content",
+    primaryAction: "understand one offer and decide whether to take it",
+    expectations: [
+      "one clear thing being offered",
+      "what happens if you click the button",
+      "enough proof to make that click reasonable",
+    ],
+    has: caps({ pricing: true, support: true }),
+  },
+  {
+    id: "blog-news",
+    label: "Blog or news publication",
     family: "content",
     primaryAction: "read something without being buried in interruptions",
     expectations: [
-      "the article, reachable and readable",
+      "the article itself, reachable and readable",
       "who wrote it, when, and on whose authority",
-      "how much of it is behind a paywall or ad wall",
+      "how much sits behind a paywall or an ad wall",
     ],
+    has: caps({ accounts: true, editorial: true, listings: true, careers: true }),
   },
   {
     id: "social-network",
@@ -125,6 +199,19 @@ export const SITE_TYPES: SiteType[] = [
       "how big and how active the community is",
       "moderation, safety, and what happens to your data",
     ],
+    has: caps({ accounts: true, support: true, editorial: true, listings: true, careers: true }),
+  },
+  {
+    id: "education",
+    label: "Course, school, or educational site",
+    family: "content",
+    primaryAction: "work out what is taught, to whom, and at what cost",
+    expectations: [
+      "what is taught, at what level, and over how long",
+      "cost or funding, and how you enrol or apply",
+      "who teaches it and what people get out of it",
+    ],
+    has: caps({ accounts: true, pricing: true, support: true, location: true, editorial: true, careers: true, events: true }),
   },
   {
     id: "nonprofit",
@@ -136,17 +223,19 @@ export const SITE_TYPES: SiteType[] = [
       "where donations actually go, with evidence",
       "an obvious way to donate or volunteer",
     ],
+    has: caps({ purchase: true, support: true, location: true, editorial: true, careers: true, events: true }),
   },
   {
-    id: "education",
-    label: "Course, school, or educational site",
+    id: "event",
+    label: "Event site",
     family: "content",
-    primaryAction: "work out what is taught, to whom, and at what cost",
+    primaryAction: "work out what is on, when, where, and how to attend",
     expectations: [
-      "curriculum, level, and time commitment",
-      "cost, funding, and admissions or enrolment steps",
-      "who teaches it and what outcomes people get",
+      "dates, times, and the actual schedule",
+      "venue, travel, and access",
+      "how to register, RSVP, or buy a ticket",
     ],
+    has: caps({ pricing: true, purchase: true, support: true, location: true, events: true, editorial: true }),
   },
   {
     id: "portfolio",
@@ -158,6 +247,19 @@ export const SITE_TYPES: SiteType[] = [
       "what they are currently looking for",
       "a way to get in touch",
     ],
+    has: caps({ support: true, editorial: true }),
+  },
+  {
+    id: "info-reference",
+    label: "Information or reference site",
+    family: "content",
+    primaryAction: "find one specific fact and leave",
+    expectations: [
+      "the fact you came for, quickly",
+      "when it was last updated and who maintains it",
+      "navigation that does not assume you already know the structure",
+    ],
+    has: caps({ support: true, location: true, editorial: true, listings: true }),
   },
 ]
 

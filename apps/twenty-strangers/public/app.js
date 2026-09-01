@@ -108,12 +108,16 @@ async function loadSiteTypes() {
 }
 
 // ---------- the cast ----------
+function renderCast(personas) {
+  els.castGrid.innerHTML = personas.map(castCard).join("")
+}
+
 async function loadCast() {
   try {
     const intl = els.intlToggle.checked ? "1" : "0"
-    const res = await fetch(`/api/personas?international=${intl}`)
-    const personas = await res.json()
-    els.castGrid.innerHTML = personas.map(castCard).join("")
+    const siteType = els.siteType?.value ? `&siteType=${encodeURIComponent(els.siteType.value)}` : ""
+    const res = await fetch(`/api/personas?international=${intl}${siteType}`)
+    renderCast(await res.json())
   } catch {
     els.castGrid.innerHTML = '<p class="fine">Could not load the cast.</p>'
   }
@@ -135,6 +139,10 @@ function castCard(p) {
 }
 
 // ---------- running ----------
+els.siteType.addEventListener("change", () => {
+  loadCast()
+})
+
 els.modes.addEventListener("click", (e) => {
   const btn = e.target.closest(".mode")
   if (!btn) return
@@ -142,10 +150,14 @@ els.modes.addEventListener("click", (e) => {
   paintPrice()
 })
 
-els.intlToggle.addEventListener("change", () => {
+function paintIntlNote() {
   els.intlNote.textContent = els.intlToggle.checked
     ? "Lena, Eleanor, and Haruto browse from Germany, the UK, and Japan."
     : "Marisol, Frank, and Devon stand in — all browsing from the US."
+}
+
+els.intlToggle.addEventListener("change", () => {
+  paintIntlNote()
   loadCast()
 })
 
@@ -211,7 +223,10 @@ async function start() {
         return setStatus(data.error ?? "Couldn't start checkout.", true)
       }
       // Remember the form so returning from Stripe feels continuous.
-      sessionStorage.setItem("ts:last", JSON.stringify({ target, objective, siteType }))
+      sessionStorage.setItem(
+        "ts:last",
+        JSON.stringify({ target, objective, siteType, international: els.intlToggle.checked }),
+      )
       location.href = data.url
     } catch {
       els.runBtn.disabled = false
@@ -285,6 +300,13 @@ function handle(e) {
       break
 
     case "run:started":
+      // The server decides the roster. Repaint the cast from what actually
+      // ran, so the page can never show visitors who were not sent.
+      renderCast(e.personas)
+      if (typeof e.international === "boolean") {
+        els.intlToggle.checked = e.international
+        paintIntlNote()
+      }
       els.stage.hidden = false
       els.stageTitle.textContent = `Twenty strangers are looking at ${hostOf(e.target)}`
       els.grid.innerHTML = ""
@@ -486,6 +508,10 @@ function resumeAfterCheckout() {
     if (last.target) els.target.value = last.target
     if (last.objective) els.objective.value = last.objective
     if (last.siteType) els.siteType.value = last.siteType
+    if (typeof last.international === "boolean") {
+      els.intlToggle.checked = last.international
+      paintIntlNote()
+    }
   } catch {
     // Cosmetic only.
   }

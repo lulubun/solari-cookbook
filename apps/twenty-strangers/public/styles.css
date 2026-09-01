@@ -332,3 +332,27 @@ select option { background: var(--bg-raised); color: var(--ink); }
 .mode:hover { color: var(--ink); }
 .mode.is-on { background: var(--bg-card); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,0.35); }
 .code-fields { display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
+
+/* Replay: the recording, and the visitor's own account of it. */
+.replay-cols { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; align-items: start; }
+@media (max-width: 1000px) { .replay-cols { grid-template-columns: minmax(0, 1fr); } }
+
+.account {
+  background: var(--bg-card); border: 1px solid var(--line-soft);
+  border-radius: var(--radius); padding: 16px 18px;
+}
+.acct-head { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 12px; }
+.acct-emoji { font-size: 20px; line-height: 1.2; }
+.acct-name { font-weight: 600; font-size: 15px; }
+.acct-mission { font-size: 12.5px; color: var(--ink-faint); line-height: 1.4; margin-top: 2px; }
+.acct-outcome { margin-left: auto; font-size: 10.5px; font-family: var(--mono); padding: 3px 7px; border-radius: 5px; white-space: nowrap; }
+.acct-outcome.pass { background: rgba(74,222,128,0.15); color: var(--good); }
+.acct-outcome.fail { background: rgba(248,113,113,0.15); color: var(--bad); }
+.account blockquote { margin: 0 0 8px; font-style: italic; font-size: 14px; line-height: 1.5; }
+.acct-error { font-size: 12.5px; color: var(--bad); margin: 8px 0 0; }
+.account h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-faint); margin: 18px 0 8px; }
+.acct-steps { margin: 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 5px; }
+.acct-steps li { display: flex; gap: 9px; font-size: 12.5px; }
+.acct-steps .t { font-family: var(--mono); color: var(--ink-faint); flex: none; min-width: 38px; }
+.acct-steps .a { color: var(--ink-dim); }
+.acct-note { margin-top: 16px; line-height: 1.5; }

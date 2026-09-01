@@ -11,6 +11,7 @@
 
 import type { Emit, RunMode, RunReport, RunRequest, PersonaResult, Friction } from "./types.js"
 import { pickSwarm } from "../personas.js"
+import { siteTypeById } from "../site-types.js"
 
 const SCRIPT: Record<string, { completed: boolean; stoppedAt: string; quote: string; frictions: Friction[] }> = {
   "impatient-mobile": {
@@ -158,7 +159,7 @@ export function mockMode(runId: string): RunMode {
   return {
     name: "swarm-mock",
     async run(req: RunRequest, emit: Emit, signal: AbortSignal): Promise<RunReport> {
-      const personas = pickSwarm(req.swarmSize, req.international)
+      const personas = pickSwarm(req.swarmSize, req.international, siteTypeById(req.siteType))
       const startedAt = new Date().toISOString()
       const t0 = Date.now()
 
@@ -168,6 +169,7 @@ export function mockMode(runId: string): RunMode {
         target: req.target,
         objective: req.objective,
         siteType: req.siteType,
+        international: req.international,
         personas,
       })
 

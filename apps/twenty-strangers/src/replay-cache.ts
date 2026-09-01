@@ -18,9 +18,32 @@
 const MAX_TOTAL_BYTES = 96 * 1024 * 1024
 const MAX_ENTRY_BYTES = 12 * 1024 * 1024
 
+/**
+ * What the persona was doing, alongside what the page was doing.
+ *
+ * rrweb records DOM changes and nothing else, so an agent-side event — a
+ * refused click, a model error, running out of patience — leaves no trace in
+ * the recording at all. Watching a replay of a visit that "hit an error" shows
+ * a page sitting there placidly, which reads as a broken replay rather than
+ * what it is. Pairing the step log with the recording is what makes the two
+ * line up.
+ */
+export interface ReplayMeta {
+  personaName: string
+  emoji: string
+  mission: string
+  quote: string
+  stoppedAt: string
+  completed: boolean
+  error?: string
+  /** Step log with offsets from the first recorded event. */
+  steps: Array<{ n: number; action: string; atMs: number }>
+}
+
 interface Entry {
   sessionId: string
   ndjson: string
+  meta?: ReplayMeta
   bytes: number
   storedAt: number
 }
@@ -28,14 +51,14 @@ interface Entry {
 const entries = new Map<string, Entry>()
 let totalBytes = 0
 
-export function storeReplay(sessionId: string, ndjson: string): boolean {
+export function storeReplay(sessionId: string, ndjson: string, meta?: ReplayMeta): boolean {
   const bytes = Buffer.byteLength(ndjson, "utf8")
   if (bytes === 0 || bytes > MAX_ENTRY_BYTES) return false
 
   const existing = entries.get(sessionId)
   if (existing) totalBytes -= existing.bytes
 
-  entries.set(sessionId, { sessionId, ndjson, bytes, storedAt: Date.now() })
+  entries.set(sessionId, { sessionId, ndjson, meta, bytes, storedAt: Date.now() })
   totalBytes += bytes
 
   // Evict oldest until we are back under the ceiling. Map preserves insertion
@@ -50,8 +73,15 @@ export function storeReplay(sessionId: string, ndjson: string): boolean {
   return true
 }
 
-export function getReplay(sessionId: string): string | undefined {
-  return entries.get(sessionId)?.ndjson
+export function getReplay(sessionId: string): { ndjson: string; meta?: ReplayMeta } | undefined {
+  const e = entries.get(sessionId)
+  return e ? { ndjson: e.ndjson, meta: e.meta } : undefined
+}
+
+/** Attach the account of the visit once the verdict exists. */
+export function annotateReplay(sessionId: string, meta: ReplayMeta): void {
+  const e = entries.get(sessionId)
+  if (e) e.meta = meta
 }
 
 export function replayStats(): { count: number; totalBytes: number } {

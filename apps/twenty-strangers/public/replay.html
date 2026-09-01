@@ -4,8 +4,8 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Replay — Twenty Strangers</title>
-<link rel="stylesheet" href="/vendor/rrweb-player.css?v=3" />
-<link rel="stylesheet" href="/styles.css?v=3" />
+<link rel="stylesheet" href="/vendor/rrweb-player.css?v=6" />
+<link rel="stylesheet" href="/styles.css?v=6" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👥</text></svg>" />
 <style>
   .replay-wrap { padding: 28px 0 60px; }
@@ -30,12 +30,15 @@
       <h1 id="who">Replay</h1>
       <span class="fine" id="meta"></span>
     </div>
-    <div class="player-shell" id="shell">
-      <p class="replay-msg" id="msg">Loading the replay…</p>
+    <div class="replay-cols">
+      <div class="player-shell" id="shell">
+        <p class="replay-msg" id="msg">Loading the replay…</p>
+      </div>
+      <aside class="account" id="account" hidden></aside>
     </div>
   </section>
 </main>
-<script src="/vendor/rrweb-player.js?v=3"></script>
-<script src="/replay.js?v=3"></script>
+<script src="/vendor/rrweb-player.js?v=6"></script>
+<script src="/replay.js?v=6"></script>
 </body>
 </html>

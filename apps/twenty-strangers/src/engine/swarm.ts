@@ -26,7 +26,7 @@ export function swarmMode(creds: Credentials, runId: string): RunMode {
     name: "swarm",
     async run(req: RunRequest, emit: Emit, signal: AbortSignal): Promise<RunReport> {
       const site = siteTypeById(req.siteType) ?? SITE_TYPES[0]!
-      const personas = pickSwarm(req.swarmSize, req.international)
+      const personas = pickSwarm(req.swarmSize, req.international, site)
 
       // Twenty personas each hold one in-flight model request against this
       // single signal, so twenty concurrent abort listeners is correct rather
@@ -43,6 +43,7 @@ export function swarmMode(creds: Credentials, runId: string): RunMode {
         target: req.target,
         objective: req.objective,
         siteType: site.id,
+        international: req.international,
         personas,
       })
 

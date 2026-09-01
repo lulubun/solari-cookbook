@@ -42,8 +42,9 @@ app.use(
 app.get("/api/personas", (req, res) => {
   // `?international=0` shows the roster a domestic run would actually use.
   const international = req.query.international !== "0"
+  const site = siteTypeById(String(req.query.siteType ?? ""))
   res.json(
-    rosterFor(international).map((p) => ({
+    rosterFor(international, site).map((p) => ({
       id: p.id,
       name: p.name,
       emoji: p.emoji,
@@ -62,13 +63,13 @@ app.get("/api/personas", (req, res) => {
  * nothing to enumerate — an unknown id is simply a miss.
  */
 app.get("/api/replay/:sessionId", (req, res) => {
-  const ndjson = getReplay(req.params.sessionId)
-  if (!ndjson) {
+  const held = getReplay(req.params.sessionId)
+  if (!held) {
     res.status(404).json({ error: "No replay held for that session." })
     return
   }
   const events: unknown[] = []
-  for (const line of ndjson.split("\n")) {
+  for (const line of held.ndjson.split("\n")) {
     if (!line.trim()) continue
     try {
       events.push(JSON.parse(line))
@@ -76,7 +77,7 @@ app.get("/api/replay/:sessionId", (req, res) => {
       // A truncated trailing line is normal; skip it.
     }
   }
-  res.json(events)
+  res.json({ events, meta: held.meta ?? null })
 })
 
 /** The player page itself. The id lives in the path, read by the client. */

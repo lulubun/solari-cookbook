@@ -83,6 +83,7 @@ export type RunEvent =
       target: string
       objective: string
       siteType: string
+      international: boolean
       personas: Persona[]
     }
   | { type: "persona:started"; personaId: string }
