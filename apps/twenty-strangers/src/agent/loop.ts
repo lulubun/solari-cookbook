@@ -107,11 +107,22 @@ export async function runPersonaLoop(page: Page, opts: LoopOptions): Promise<{ v
 
     step++
 
+    // The conversation is resent in full on every step, so cost grows
+    // quadratically with visit length. Two cache breakpoints flatten it: the
+    // system prompt never changes within a visit, and a sliding breakpoint on
+    // the most recent tool result turns the whole accumulated prefix into a
+    // cache read (0.1x) instead of fresh input (1x) on the following step.
     const res = await client.messages.create(
       {
         model,
         max_tokens: 1024,
-        system: systemPrompt(persona, opts.objective, opts.target),
+        system: [
+          {
+            type: "text",
+            text: systemPrompt(persona, opts.objective, opts.target),
+            cache_control: { type: "ephemeral" },
+          },
+        ],
         tools: TOOLS,
         tool_choice: { type: "any" },
         messages,
@@ -167,8 +178,30 @@ export async function runPersonaLoop(page: Page, opts: LoopOptions): Promise<{ v
     messages.push({ role: "assistant", content: res.content })
     messages.push({
       role: "user",
-      content: [{ type: "tool_result", tool_use_id: toolUse.id, content: observation }],
+      content: [
+        {
+          type: "tool_result",
+          tool_use_id: toolUse.id,
+          content: observation,
+          cache_control: { type: "ephemeral" },
+        },
+      ],
     })
+
+    // Only the newest breakpoint is worth holding — drop the previous one so we
+    // stay well inside the four-breakpoint limit.
+    for (let i = messages.length - 3; i >= 0; i--) {
+      const m = messages[i]
+      if (!m || m.role !== "user" || !Array.isArray(m.content)) continue
+      let cleared = false
+      for (const block of m.content) {
+        if (block.type === "tool_result" && block.cache_control) {
+          delete block.cache_control
+          cleared = true
+        }
+      }
+      if (cleared) break
+    }
 
     // Keep the context from growing without bound on long visits: only the
     // two most recent observations carry their full outline.

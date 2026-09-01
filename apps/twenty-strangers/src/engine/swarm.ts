@@ -10,6 +10,7 @@
  * event stream, different scoring — which is why `RunMode` exists.
  */
 
+import { setMaxListeners } from "node:events"
 import { Solari, SolariError } from "@solarisdk/browser"
 import type { Emit, RunMode, RunReport, RunRequest, PersonaResult } from "./types.js"
 import type { Credentials } from "../config.js"
@@ -24,6 +25,13 @@ export function swarmMode(creds: Credentials, runId: string): RunMode {
     name: "swarm",
     async run(req: RunRequest, emit: Emit, signal: AbortSignal): Promise<RunReport> {
       const personas = pickSwarm(req.swarmSize)
+
+      // Twenty personas each hold one in-flight model request against this
+      // single signal, so twenty concurrent abort listeners is correct rather
+      // than a leak — but it trips Node's default warning at ten. Raise the
+      // ceiling on this signal only.
+      setMaxListeners(0, signal)
+
       const startedAt = new Date().toISOString()
       const t0 = Date.now()
 

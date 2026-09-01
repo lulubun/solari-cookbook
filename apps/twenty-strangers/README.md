@@ -32,17 +32,33 @@ strangers independently hit them.
 
 ## What a run costs
 
-About **30 cents**, and roughly 90 seconds.
+**About 50 cents, and about 35 seconds.** Those are measured, not estimated.
 
-Twenty browsers for a few minutes is about 17¢ of session time at Starter
-rates. Residential proxy bandwidth is the dominant variable at $1/GB, which is
-why only the geo-personas egress through one and everyone else goes direct.
-The agent loop runs on Haiku with a hard step cap and text-only observations —
-no screenshots into the model — which keeps token spend below the browser
-spend rather than dwarfing it.
+A real twenty-persona run against `getsolari.com`:
+
+| | |
+|---|---|
+| Wall clock | **32.7s** for all twenty, in parallel |
+| Cost | **$0.571** |
+| Browser time | $0.012 — *2% of the bill* |
+| Model tokens | $0.559 — *98% of the bill* |
+| Live frames streamed | 158 |
+| Session replays captured | 19/20 |
+
+The split is worth dwelling on, because it is the opposite of what you would
+guess. Twenty cloud browsers running for half a minute cost about one penny;
+Solari is not the expensive part of this by any margin. Essentially the entire
+bill is the model deciding what to click.
+
+That is what makes the cost levers what they are. Observations are text rather
+than screenshots, the step cap is hard, and the loop runs on Haiku — all three
+exist to hold down token spend, because token spend *is* the spend. Prompt
+caching (system prompt plus a sliding breakpoint over the accumulated
+conversation) trims a further ~14%; the visits are short enough that there is
+not much more to win there.
 
 The exact number is shown at the end of every run. It's not hidden, because
-"this cost 31 cents" is a more interesting claim than "this was fast".
+"this cost 49 cents" is a more interesting claim than "this was fast".
 
 ## How it works
 

@@ -20,7 +20,8 @@ different country, a different reason for showing up. Watch all twenty at the
 same time, then read where every one of them gave up.
 
 One agent visiting your site is an anecdote. Twenty independently failing to find
-your pricing is a fact. A run takes about 90 seconds and costs about 30 cents.
+your pricing is a fact. A measured run: twenty personas, 32.7 seconds, 57 cents —
+of which the twenty cloud browsers were about one penny.
 
 ```bash
 cd apps/twenty-strangers && npm install

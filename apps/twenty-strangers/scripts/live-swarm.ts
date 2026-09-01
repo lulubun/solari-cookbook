@@ -48,7 +48,7 @@ const emit = (e: RunEvent): void => {
     case "run:done": {
       const r = e.report
       console.log("=".repeat(66))
-      console.log(`completion: ${Math.round(r.completionRate * 100)}%  ·  ${(r.durationMs / 1000).toFixed(1)}s  ·  $${r.cost.estimatedUsd.toFixed(3)}  ·  ${frames} live frames`)
+      console.log(`completion: ${Math.round(r.completionRate * 100)}%  ·  ${(r.durationMs / 1000).toFixed(1)}s  ·  $${r.cost.estimatedUsd.toFixed(3)}  ·  ${frames} live frames  ·  errored ${r.errored}`)
       console.log(`replays: ${r.results.filter((x) => x.replayUrl).length}/${r.results.length}`)
       console.log("\nthemes:")
       for (const t of r.themes) console.log(`  ${t.raisedBy.length}x [${t.severity}] ${t.headline} — ${t.raisedBy.join(", ")}`)
