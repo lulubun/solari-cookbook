@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Replay — Twenty Strangers</title>
+<link rel="stylesheet" href="/vendor/rrweb-player.css?v=3" />
+<link rel="stylesheet" href="/styles.css?v=3" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👥</text></svg>" />
+<style>
+  .replay-wrap { padding: 28px 0 60px; }
+  .replay-head { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; flex-wrap: wrap; }
+  .replay-head h1 { font-size: 1.35rem; margin: 0; letter-spacing: -0.02em; }
+  .player-shell {
+    background: var(--bg-card); border: 1px solid var(--line-soft);
+    border-radius: var(--radius); padding: 14px; overflow: auto;
+  }
+  .rr-player { margin: 0 auto; }
+  .replay-msg { color: var(--ink-dim); font-size: 14.5px; }
+</style>
+</head>
+<body>
+<header class="masthead">
+  <div class="wordmark"><span class="dot"></span> Twenty Strangers</div>
+  <nav><a href="/">← Back to the run</a></nav>
+</header>
+<main>
+  <section class="replay-wrap">
+    <div class="replay-head">
+      <h1 id="who">Replay</h1>
+      <span class="fine" id="meta"></span>
+    </div>
+    <div class="player-shell" id="shell">
+      <p class="replay-msg" id="msg">Loading the replay…</p>
+    </div>
+  </section>
+</main>
+<script src="/vendor/rrweb-player.js?v=3"></script>
+<script src="/replay.js?v=3"></script>
+</body>
+</html>

@@ -158,11 +158,18 @@ export function mockMode(runId: string): RunMode {
   return {
     name: "swarm-mock",
     async run(req: RunRequest, emit: Emit, signal: AbortSignal): Promise<RunReport> {
-      const personas = pickSwarm(req.swarmSize)
+      const personas = pickSwarm(req.swarmSize, req.international)
       const startedAt = new Date().toISOString()
       const t0 = Date.now()
 
-      emit({ type: "run:started", runId, target: req.target, objective: req.objective, personas })
+      emit({
+        type: "run:started",
+        runId,
+        target: req.target,
+        objective: req.objective,
+        siteType: req.siteType,
+        personas,
+      })
 
       const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
       const results: PersonaResult[] = []
@@ -217,6 +224,8 @@ export function mockMode(runId: string): RunMode {
         runId,
         target: req.target,
         objective: req.objective,
+        siteType: req.siteType,
+        international: req.international,
         startedAt,
         durationMs: Date.now() - t0,
         completionRate: completionRate(results),

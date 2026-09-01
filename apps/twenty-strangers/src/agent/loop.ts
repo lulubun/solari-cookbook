@@ -16,6 +16,8 @@
 import type Anthropic from "@anthropic-ai/sdk"
 import type { Page } from "patchright-core"
 import type { Persona } from "../personas.js"
+import { missionFor } from "../personas.js"
+import type { SiteType } from "../site-types.js"
 import type { Verdict, Friction } from "../engine/types.js"
 import { observe } from "./observe.js"
 import { executeAction, TOOLS } from "./actions.js"
@@ -27,6 +29,7 @@ export interface LoopOptions {
   persona: Persona
   objective: string
   target: string
+  site: SiteType
   maxSteps: number
   deadline: number
   meter: TokenMeter
@@ -34,18 +37,25 @@ export interface LoopOptions {
   onStep: (step: number, thought: string, action: string) => void
 }
 
-function systemPrompt(p: Persona, objective: string, target: string): string {
+function systemPrompt(p: Persona, objective: string, target: string, site: SiteType): string {
   return [
     `You are ${p.name}. ${p.blurb}`,
     ``,
     `You have just landed on ${target} for the first time.`,
     ``,
+    `WHAT KIND OF SITE THIS IS`,
+    `${site.label}. People come here to ${site.primaryAction}.`,
+    `Visitors to this kind of site routinely check:`,
+    ...site.expectations.map((e) => `  - ${e}`),
+    `Judge it as this kind of site. Do not fault a ${site.label.toLowerCase()} for`,
+    `lacking things that belong on a different kind of site entirely.`,
+    ``,
     `WHO YOU ARE`,
     p.temperament,
     ``,
     `WHAT YOU CAME FOR`,
-    `${p.mission}`,
-    objective ? `The visit is framed around this: ${objective}` : ``,
+    `${missionFor(p, site.family)}`,
+    `The person who asked for this visit wants to know: ${objective}`,
     ``,
     `YOUR SITUATION`,
     `- Screen: ${p.device.width}x${p.device.height}${p.device.isMobile ? " (mobile, touch)" : " (desktop)"}`,
@@ -107,6 +117,7 @@ async function forceVerdict(
   persona: Persona,
   objective: string,
   target: string,
+  site: SiteType,
   messages: Anthropic.MessageParam[],
   meter: TokenMeter,
   signal: AbortSignal,
@@ -116,7 +127,7 @@ async function forceVerdict(
       {
         model,
         max_tokens: 1024,
-        system: systemPrompt(persona, objective, target),
+        system: systemPrompt(persona, objective, target, site),
         tools: TOOLS,
         tool_choice: { type: "tool", name: "finish" },
         messages: [
@@ -187,7 +198,7 @@ export async function runPersonaLoop(page: Page, opts: LoopOptions): Promise<{ v
         system: [
           {
             type: "text",
-            text: systemPrompt(persona, opts.objective, opts.target),
+            text: systemPrompt(persona, opts.objective, opts.target, opts.site),
             cache_control: { type: "ephemeral" },
           },
         ],
@@ -287,7 +298,7 @@ export async function runPersonaLoop(page: Page, opts: LoopOptions): Promise<{ v
 
   // Out of steps. Ask for a real verdict rather than emitting boilerplate.
   const forced = await forceVerdict(
-    client, model, persona, opts.objective, opts.target, messages, meter, signal,
+    client, model, persona, opts.objective, opts.target, opts.site, messages, meter, signal,
   )
   return { verdict: forced ?? fallbackVerdict("used up their patience", persona), steps: step }
 }

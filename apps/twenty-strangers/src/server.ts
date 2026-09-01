@@ -14,10 +14,12 @@ import express from "express"
 import { WebSocketServer, type WebSocket } from "ws"
 
 import { config, houseCredentials, type Credentials } from "./config.js"
-import { PERSONAS } from "./personas.js"
+import { PERSONAS, DOMESTIC_ALTERNATES, rosterFor } from "./personas.js"
+import { SITE_TYPES, siteTypeById } from "./site-types.js"
 import { RunQueue } from "./queue.js"
 import { SlidingWindow } from "./ratelimit.js"
 import { validateTarget, robotsAllows, UnsafeTargetError } from "./safety.js"
+import { getReplay, replayStats } from "./replay-cache.js"
 import { swarmMode } from "./engine/swarm.js"
 import { mockMode } from "./engine/mock.js"
 import type { RunEvent } from "./engine/types.js"
@@ -26,11 +28,20 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const app = express()
 app.use(express.json({ limit: "64kb" }))
-app.use(express.static(path.join(__dirname, "..", "public"), { maxAge: "1h" }))
+// Cache hard in production, not at all in development — a stale app.js after
+// an edit costs more time than the bytes ever save.
+app.use(
+  express.static(path.join(__dirname, "..", "public"), {
+    maxAge: process.env.NODE_ENV === "production" ? "1h" : 0,
+    etag: true,
+  }),
+)
 
-app.get("/api/personas", (_req, res) => {
+app.get("/api/personas", (req, res) => {
+  // `?international=0` shows the roster a domestic run would actually use.
+  const international = req.query.international !== "0"
   res.json(
-    PERSONAS.map((p) => ({
+    rosterFor(international).map((p) => ({
       id: p.id,
       name: p.name,
       emoji: p.emoji,
@@ -42,12 +53,46 @@ app.get("/api/personas", (_req, res) => {
   )
 })
 
+/**
+ * The captured rrweb events for one session, as JSON the player can consume.
+ *
+ * Only sessions this process actually ran are in the cache, so there is
+ * nothing to enumerate — an unknown id is simply a miss.
+ */
+app.get("/api/replay/:sessionId", (req, res) => {
+  const ndjson = getReplay(req.params.sessionId)
+  if (!ndjson) {
+    res.status(404).json({ error: "No replay held for that session." })
+    return
+  }
+  const events: unknown[] = []
+  for (const line of ndjson.split("\n")) {
+    if (!line.trim()) continue
+    try {
+      events.push(JSON.parse(line))
+    } catch {
+      // A truncated trailing line is normal; skip it.
+    }
+  }
+  res.json(events)
+})
+
+/** The player page itself. The id lives in the path, read by the client. */
+app.get("/replay/:sessionId", (_req, res) => {
+  res.sendFile(path.join(__dirname, "..", "public", "replay.html"))
+})
+
+app.get("/api/site-types", (_req, res) => {
+  res.json(SITE_TYPES.map((t) => ({ id: t.id, label: t.label, family: t.family })))
+})
+
 app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
     mock: config.mock,
     housekeys: houseCredentials() !== null,
     queueDepth: queue.depth,
+    replays: replayStats(),
   })
 })
 
@@ -72,6 +117,8 @@ interface StartMessage {
   type: "start"
   target?: string
   objective?: string
+  siteType?: string
+  international?: boolean
   swarmSize?: number
   solariApiKey?: string
   anthropicApiKey?: string
@@ -122,6 +169,21 @@ wss.on("connection", (ws: WebSocket, req) => {
           type: "fatal",
           message: err instanceof UnsafeTargetError ? err.message : "Could not check that URL.",
         })
+      }
+
+      // Both are required. Without an objective the personas wander and the
+      // report is mush; without a site type they judge a florist by SaaS
+      // standards. Enforced here rather than trusted to the form.
+      const objective = (msg.objective ?? "").trim()
+      if (objective.length < 3) {
+        return send({
+          type: "fatal",
+          message: "Tell the strangers what they should be trying to do — that's what makes the report useful.",
+        })
+      }
+      const site = siteTypeById(String(msg.siteType ?? ""))
+      if (!site) {
+        return send({ type: "fatal", message: "Pick what kind of site this is." })
       }
 
       const robots = await robotsAllows(target)
@@ -178,7 +240,9 @@ wss.on("connection", (ws: WebSocket, req) => {
       )
       const request = {
         target: target.url,
-        objective: (msg.objective ?? "").slice(0, 300),
+        objective: objective.slice(0, 300),
+        siteType: site.id,
+        international: msg.international !== false,
         swarmSize,
       }
       const mode = config.mock ? mockMode(runId) : swarmMode(creds, runId)

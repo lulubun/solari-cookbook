@@ -51,6 +51,8 @@ export interface RunReport {
   runId: string
   target: string
   objective: string
+  siteType: string
+  international: boolean
   startedAt: string
   durationMs: number
   /** Share of personas that ACTUALLY VISITED and got what they came for.
@@ -75,7 +77,14 @@ export interface RunReport {
 
 export type RunEvent =
   | { type: "run:queued"; runId: string; position: number; etaSeconds: number }
-  | { type: "run:started"; runId: string; target: string; objective: string; personas: Persona[] }
+  | {
+      type: "run:started"
+      runId: string
+      target: string
+      objective: string
+      siteType: string
+      personas: Persona[]
+    }
   | { type: "persona:started"; personaId: string }
   | { type: "persona:frame"; personaId: string; jpegBase64: string }
   | { type: "persona:step"; personaId: string; step: number; thought: string; action: string }
@@ -87,7 +96,12 @@ export type Emit = (e: RunEvent) => void
 
 export interface RunRequest {
   target: string
+  /** Required. Without it the personas wander; with it they have a job. */
   objective: string
+  /** Required. Id from SITE_TYPES — decides how every persona behaves. */
+  siteType: string
+  /** Send the three visitors from abroad, or swap in domestic alternates. */
+  international: boolean
   swarmSize: number
 }
 

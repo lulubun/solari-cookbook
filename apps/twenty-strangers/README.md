@@ -10,6 +10,57 @@ Built on [Solari](https://getsolari.com).
 
 ---
 
+## Telling it what it's looking at
+
+Two things are required before a run, because without them the report is mush.
+
+**What they should be trying to do.** Twenty personas with no goal wander, and
+wandering produces observations rather than findings.
+
+**What kind of site this is.** This is the one that changes everything. Twenty
+strangers arriving at an API reference want completely different things than
+twenty arriving at a florist's, and judging a museum's opening-hours page by
+whether it has transparent pricing tiers is worse than useless.
+
+Site types are grouped into three families — *technical*, *selling something*,
+*publishing something* — and personas branch their behaviour on the family,
+because the distinction that matters to a visitor is whether they are buying,
+learning, or reading. The specific type still reaches the prompt, so a persona
+on a booking site looks for availability rather than a cart.
+
+Yuki is the clearest case. On a SaaS site he ignores the marketing and hunts
+for the docs, which is exactly right. At an online store that would be absurd,
+so the same technically-minded person instead asks whether the search actually
+works, whether the filters do anything, whether the product data is complete,
+and whether checkout looks trustworthy. Eleven of the twenty branch this way.
+
+## Visitors from abroad, optionally
+
+Three of the twenty browse from Germany, the UK, and Japan through residential
+proxies, which is how you find consent-banner obstruction, missing currency and
+regional information, and copy that assumes a US audience.
+
+They are also the only ones that cost proxy bandwidth, and they are irrelevant
+if you only trade domestically — so they can be switched off. Doing that swaps
+in three domestic stand-ins rather than shrinking the swarm, chosen to carry
+the same weight: Marisol wants social proof, Frank expects things to be
+labelled and is defeated by icon-only navigation, and Devon only cares whether
+this fits the tools he already has.
+
+## Watching what they saw
+
+Every visit is recorded and plays back in the browser as a real DOM
+reconstruction — you see the page as that persona saw it, at their viewport,
+with their cursor, scrubbable.
+
+Solari's own replay link is a presigned URL that serves gzipped NDJSON with
+download headers, so clicking it hands you a `.ndjson.gz` your browser will not
+open. The data underneath is rrweb, which is eminently playable; it just needs
+a player pointed at it. So each visit's events are captured when the session is
+released and served back through a bundled player. That also means a visitor
+running on their own API key gets working replays without this server ever
+holding their credentials.
+
 ## Why twenty
 
 One agent visiting your site tells you almost nothing. It either completed the

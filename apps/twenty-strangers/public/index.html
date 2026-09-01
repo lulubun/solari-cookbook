@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Twenty Strangers — send twenty people to your website and watch where they give up</title>
 <meta name="description" content="Twenty AI strangers visit your site at once, each on a different device, from a different country, looking for a different thing. Watch them live. Find out where they bounce." />
-<link rel="stylesheet" href="/styles.css" />
+<link rel="stylesheet" href="/styles.css?v=3" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👥</text></svg>" />
 </head>
 <body>
@@ -39,19 +39,36 @@
         />
         <button type="submit" id="run-btn">Send them in</button>
       </div>
+      <div class="field-row">
+        <select id="site-type" required aria-label="What kind of site is this?">
+          <option value="">What kind of site is this?</option>
+        </select>
+      </div>
+
       <input
         id="objective"
         name="objective"
         type="text"
-        placeholder="Optional: what should they be trying to do? e.g. “work out if this is worth paying for”"
+        required
+        minlength="3"
+        placeholder="What should they be trying to do? e.g. “work out if this is worth paying for”"
         maxlength="200"
       />
+
+      <div class="meta-row">
+        <label class="ghost-toggle">
+          <input type="checkbox" id="intl-toggle" checked />
+          <span>Include visitors from abroad</span>
+        </label>
+        <span class="cost-note" id="intl-note">Lena, Eleanor, and Haruto browse from Germany, the UK, and Japan.</span>
+      </div>
+
       <div class="meta-row">
         <label class="ghost-toggle">
           <input type="checkbox" id="byo-toggle" />
           <span>Use my own API keys (skips the queue)</span>
         </label>
-        <span class="cost-note" id="cost-note">A run costs about 30¢ of cloud browser time.</span>
+        <span class="cost-note" id="cost-note">A run takes ~35s and costs ~50¢ — of which the twenty browsers are about 1¢.</span>
       </div>
       <div class="byo-fields" id="byo-fields" hidden>
         <input id="solari-key" type="password" placeholder="SOLARI_API_KEY (slr_live_…)" autocomplete="off" />
@@ -95,6 +112,6 @@
   </p>
 </footer>
 
-<script type="module" src="/app.js"></script>
+<script type="module" src="/app.js?v=3"></script>
 </body>
 </html>

@@ -36,6 +36,7 @@ interface RawObservation {
   title: string
   elements: Array<{ ref: number | null; role: string; name: string }>
   paragraphs: string[]
+  facts: string[]
   scrollProgress: number
   consentWallLikely: boolean
 }
@@ -109,6 +110,37 @@ function (maxElements, maxTextChars) {
     if (t.length > 40) paras.push(t.slice(0, maxTextChars));
   }
 
+  // Short text that carries the whole decision. A prose-length filter hides
+  // exactly the things a shopper came for — "£54.23", "In stock", "Free
+  // delivery" are all under ten characters, and dropping them makes a persona
+  // report that a price it simply could not see does not exist.
+  var facts = [];
+  var KEY = /(?:[£$€¥₹]\\s?[\\d,.]+)|(?:[\\d,.]+\\s?(?:USD|EUR|GBP|JPY))|in stock|out of stock|sold out|free (?:shipping|delivery|returns)|delivery|dispatch|per month|\\/mo\\b|per year|\\/yr\\b/i;
+  var shortEls = document.querySelectorAll("p, span, td, th, dd, dt, strong, b, h4, h5, h6, li");
+  for (var f = 0; f < shortEls.length && facts.length < 24; f++) {
+    var fe = shortEls[f];
+    if (!isVisible(fe)) continue;
+    // Only leaf-ish nodes, so we do not capture a whole section wrapper.
+    if (fe.children && fe.children.length > 2) continue;
+    var ft = (fe.textContent || "").replace(/\\s+/g, " ").trim();
+    if (!ft || ft.length > 90) continue;
+    if (!KEY.test(ft)) continue;
+    if (facts.indexOf(ft) === -1) facts.push(ft);
+  }
+
+  // Definition-style tables carry the specs on almost every product page.
+  var rows = document.querySelectorAll("tr");
+  for (var r2 = 0; r2 < rows.length && facts.length < 34; r2++) {
+    if (!isVisible(rows[r2])) continue;
+    var cells = rows[r2].querySelectorAll("th, td");
+    if (cells.length < 2) continue;
+    var k = (cells[0].textContent || "").replace(/\\s+/g, " ").trim();
+    var v = (cells[1].textContent || "").replace(/\\s+/g, " ").trim();
+    if (!k || !v) continue;
+    var pair = (k + ": " + v).slice(0, 90);
+    if (facts.indexOf(pair) === -1) facts.push(pair);
+  }
+
   var doc = document.documentElement;
   var scrollable = Math.max(1, doc.scrollHeight - window.innerHeight);
   var progress = Math.min(1, Math.max(0, window.scrollY / scrollable));
@@ -121,6 +153,7 @@ function (maxElements, maxTextChars) {
     title: document.title || "",
     elements: out,
     paragraphs: paras,
+    facts: facts,
     scrollProgress: progress,
     consentWallLikely: consent
   };
@@ -136,6 +169,10 @@ export async function observe(page: Page): Promise<Observation> {
     const name = el.name.replace(/\s+/g, " ").trim()
     if (!name) continue
     lines.push(el.ref === null ? `${el.role} "${name}"` : `[${el.ref}] ${el.role} "${name}"`)
+  }
+  if (raw.facts.length) {
+    lines.push("", "--- prices, stock and specifics ---")
+    for (const f of raw.facts) lines.push(f)
   }
   if (raw.paragraphs.length) {
     lines.push("", "--- body copy ---")

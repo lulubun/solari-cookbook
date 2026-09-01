@@ -16,6 +16,7 @@ import type { Emit, RunMode, RunReport, RunRequest, PersonaResult } from "./type
 import type { Credentials } from "../config.js"
 import { config } from "../config.js"
 import { pickSwarm } from "../personas.js"
+import { siteTypeById, SITE_TYPES } from "../site-types.js"
 import { runPersona } from "./persona-run.js"
 import { TokenMeter, makeClient } from "../agent/llm.js"
 import { buildThemes, completionRate, erroredCount } from "../report/aggregate.js"
@@ -24,7 +25,8 @@ export function swarmMode(creds: Credentials, runId: string): RunMode {
   return {
     name: "swarm",
     async run(req: RunRequest, emit: Emit, signal: AbortSignal): Promise<RunReport> {
-      const personas = pickSwarm(req.swarmSize)
+      const site = siteTypeById(req.siteType) ?? SITE_TYPES[0]!
+      const personas = pickSwarm(req.swarmSize, req.international)
 
       // Twenty personas each hold one in-flight model request against this
       // single signal, so twenty concurrent abort listeners is correct rather
@@ -40,6 +42,7 @@ export function swarmMode(creds: Credentials, runId: string): RunMode {
         runId,
         target: req.target,
         objective: req.objective,
+        siteType: site.id,
         personas,
       })
 
@@ -69,6 +72,7 @@ export function swarmMode(creds: Credentials, runId: string): RunMode {
               persona,
               target: req.target,
               objective: req.objective,
+              site,
               maxSteps: config.swarm.maxStepsPerPersona,
               timeoutMs: config.swarm.personaTimeoutMs,
               meter,
@@ -103,6 +107,8 @@ export function swarmMode(creds: Credentials, runId: string): RunMode {
         runId,
         target: req.target,
         objective: req.objective,
+        siteType: site.id,
+        international: req.international,
         startedAt,
         durationMs,
         completionRate: completionRate(results),

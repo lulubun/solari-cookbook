@@ -11,6 +11,9 @@ import type { RunEvent } from "../src/engine/types.js"
 
 const target = process.argv[2] ?? "https://getsolari.com"
 const size = Number(process.argv[3] ?? 3)
+const siteType = process.argv[4] ?? "saas"
+const international = process.argv[5] !== "domestic"
+const objective = process.env.TS_OBJECTIVE ?? "work out whether this is worth my time"
 
 const creds = {
   solariApiKey: process.env.SOLARI_API_KEY!,
@@ -50,6 +53,7 @@ const emit = (e: RunEvent): void => {
       console.log("=".repeat(66))
       console.log(`completion: ${Math.round(r.completionRate * 100)}%  ·  ${(r.durationMs / 1000).toFixed(1)}s  ·  $${r.cost.estimatedUsd.toFixed(3)}  ·  ${frames} live frames  ·  errored ${r.errored}`)
       console.log(`replays: ${r.results.filter((x) => x.replayUrl).length}/${r.results.length}`)
+      for (const x of r.results) if (x.replayUrl) console.log(`  ${x.persona.name}: ${x.replayUrl}`)
       console.log("\nthemes:")
       for (const t of r.themes) console.log(`  ${t.raisedBy.length}x [${t.severity}] ${t.headline} — ${t.raisedBy.join(", ")}`)
       break
@@ -61,5 +65,9 @@ const emit = (e: RunEvent): void => {
 }
 
 const mode = swarmMode(creds, `live_${Date.now().toString(36)}`)
-await mode.run({ target, objective: "", swarmSize: size }, emit, new AbortController().signal)
+await mode.run(
+  { target, objective, siteType, international, swarmSize: size },
+  emit,
+  new AbortController().signal,
+)
 process.exit(0)

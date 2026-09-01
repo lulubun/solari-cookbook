@@ -16,14 +16,17 @@
  * these run at once.
  */
 
+import { gunzipSync } from "node:zlib"
 import type Anthropic from "@anthropic-ai/sdk"
 import type { Solari } from "@solarisdk/browser"
 import type { Persona } from "../personas.js"
 import type { PersonaResult, Emit } from "./types.js"
+import type { SiteType } from "../site-types.js"
 import { needsStealth } from "../personas.js"
 import { runPersonaLoop } from "../agent/loop.js"
 import { TokenMeter } from "../agent/llm.js"
 import { USER_AGENT_TOKEN } from "../safety.js"
+import { storeReplay } from "../replay-cache.js"
 
 const FRAME_INTERVAL_MS = 700
 
@@ -34,6 +37,7 @@ export interface PersonaRunOptions {
   persona: Persona
   target: string
   objective: string
+  site: SiteType
   maxSteps: number
   timeoutMs: number
   meter: TokenMeter
@@ -106,6 +110,7 @@ export async function runPersona(opts: PersonaRunOptions): Promise<PersonaResult
       persona,
       objective: opts.objective,
       target: opts.target,
+      site: opts.site,
       maxSteps: opts.maxSteps,
       deadline,
       meter: opts.meter,
@@ -119,7 +124,7 @@ export async function runPersona(opts: PersonaRunOptions): Promise<PersonaResult
     await browser.close()
     browser = null
 
-    const replayUrl = sessionId ? await pollReplayUrl(solari, sessionId) : undefined
+    const replayUrl = sessionId ? await captureReplay(solari, sessionId) : undefined
 
     const result: PersonaResult = {
       persona,
@@ -151,16 +156,54 @@ export async function runPersona(opts: PersonaRunOptions): Promise<PersonaResult
   }
 }
 
-/** The replay lands a beat after release, so give it a few tries. */
-async function pollReplayUrl(solari: Solari, sessionId: string): Promise<string | undefined> {
-  for (let i = 0; i < 5; i++) {
+/**
+ * Pull the replay down and keep it, returning a URL to our own player.
+ *
+ * The replay lands a beat after release, so this polls. We download the
+ * NDJSON rather than handing out Solari's presigned link because that link
+ * serves a gzipped file with download headers — the browser saves a
+ * `.ndjson.gz` nobody can open instead of playing it.
+ */
+async function captureReplay(solari: Solari, sessionId: string): Promise<string | undefined> {
+  let lastError = "never became available"
+  for (let i = 0; i < 8; i++) {
     await new Promise((r) => setTimeout(r, 1200))
     try {
-      const { url } = await solari.sessions.getReplayUrl(sessionId)
-      if (url) return url
-    } catch {
-      // Not ready yet.
+      const bytes = await solari.sessions.downloadReplay(sessionId)
+      if (!bytes || bytes.length === 0) {
+        lastError = "empty response"
+        continue
+      }
+      const text = decodeReplay(bytes)
+      if (!text.trim()) {
+        lastError = "decoded to nothing"
+        continue
+      }
+      if (storeReplay(sessionId, text)) {
+        return `/replay/${encodeURIComponent(sessionId)}`
+      }
+      lastError = "too large to cache"
+      return undefined
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err)
     }
   }
+  // A missing replay is not worth failing a visit over, but silently dropping
+  // it means never finding out why the button is missing.
+  console.warn(`replay unavailable for ${sessionId.slice(-12)}: ${lastError}`)
   return undefined
+}
+
+/** The endpoint may hand back gzip or plain NDJSON depending on the path. */
+function decodeReplay(bytes: Uint8Array): string {
+  const buf = Buffer.from(bytes)
+  // gzip magic
+  if (buf.length > 2 && buf[0] === 0x1f && buf[1] === 0x8b) {
+    try {
+      return gunzipSync(buf).toString("utf8")
+    } catch {
+      return ""
+    }
+  }
+  return buf.toString("utf8")
 }

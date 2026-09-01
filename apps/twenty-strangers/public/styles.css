@@ -301,3 +301,24 @@ footer {
 .tile.done.errored { border-color: rgba(154, 161, 179, 0.3); opacity: 0.6; }
 .outcome-glyph.errored { color: var(--ink-faint); }
 .errored-note { margin: 0 0 8px; max-width: 62ch; }
+
+/* Site-type selector — matches the text inputs rather than the OS default. */
+select {
+  flex: 1;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-family: inherit;
+  appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' stroke='%239aa1b3' stroke-width='1.6' fill='none' stroke-linecap='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  padding-right: 40px;
+}
+select:focus { outline: none; border-color: var(--accent-dim); background-color: #161821; }
+select:invalid { color: var(--ink-faint); }
+select option { background: var(--bg-raised); color: var(--ink); }

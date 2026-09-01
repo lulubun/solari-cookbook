@@ -21,6 +21,9 @@ const els = {
   cancel: $("cancel-btn"),
   castGrid: $("cast-grid"),
   byoToggle: $("byo-toggle"),
+  intlToggle: $("intl-toggle"),
+  intlNote: $("intl-note"),
+  siteType: $("site-type"),
   byoFields: $("byo-fields"),
   solariKey: $("solari-key"),
   anthropicKey: $("anthropic-key"),
@@ -31,10 +34,37 @@ const FLAG = { de: "🇩🇪", gb: "🇬🇧", jp: "🇯🇵", us: "🇺🇸", f
 let socket = null
 const tiles = new Map()
 
+const FAMILY_LABEL = {
+  technical: "Technical",
+  commerce: "Selling something",
+  content: "Publishing something",
+}
+
+async function loadSiteTypes() {
+  try {
+    const types = await (await fetch("/api/site-types")).json()
+    const byFamily = new Map()
+    for (const t of types) {
+      if (!byFamily.has(t.family)) byFamily.set(t.family, [])
+      byFamily.get(t.family).push(t)
+    }
+    let html = '<option value="">What kind of site is this?</option>'
+    for (const [family, items] of byFamily) {
+      html += `<optgroup label="${esc(FAMILY_LABEL[family] ?? family)}">`
+      html += items.map((t) => `<option value="${esc(t.id)}">${esc(t.label)}</option>`).join("")
+      html += "</optgroup>"
+    }
+    els.siteType.innerHTML = html
+  } catch {
+    // Leave the placeholder; the server will reject a run without a type.
+  }
+}
+
 // ---------- the cast ----------
 async function loadCast() {
   try {
-    const res = await fetch("/api/personas")
+    const intl = els.intlToggle.checked ? "1" : "0"
+    const res = await fetch(`/api/personas?international=${intl}`)
     const personas = await res.json()
     els.castGrid.innerHTML = personas.map(castCard).join("")
   } catch {
@@ -62,6 +92,13 @@ els.byoToggle.addEventListener("change", () => {
   els.byoFields.hidden = !els.byoToggle.checked
 })
 
+els.intlToggle.addEventListener("change", () => {
+  els.intlNote.textContent = els.intlToggle.checked
+    ? "Lena, Eleanor, and Haruto browse from Germany, the UK, and Japan."
+    : "Marisol, Frank, and Devon stand in — all browsing from the US."
+  loadCast()
+})
+
 els.form.addEventListener("submit", (e) => {
   e.preventDefault()
   start()
@@ -78,6 +115,19 @@ function start() {
   const target = els.target.value.trim()
   if (!target) return
 
+  const siteType = els.siteType.value
+  if (!siteType) {
+    setStatus("Pick what kind of site this is — it changes what every stranger looks for.", true)
+    els.siteType.focus()
+    return
+  }
+  const objective = els.objective.value.trim()
+  if (objective.length < 3) {
+    setStatus("Tell them what to try to do. Without it the report is mush.", true)
+    els.objective.focus()
+    return
+  }
+
   els.runBtn.disabled = true
   els.report.hidden = true
   els.report.innerHTML = ""
@@ -92,7 +142,9 @@ function start() {
     const msg = {
       type: "start",
       target,
-      objective: els.objective.value.trim(),
+      objective,
+      siteType,
+      international: els.intlToggle.checked,
     }
     if (els.byoToggle.checked) {
       msg.solariApiKey = els.solariKey.value.trim()
@@ -253,7 +305,7 @@ function renderReport(r) {
     .map((x) => {
       const ok = x.verdict.completed
       const replay = x.replayUrl
-        ? `<a class="replay" href="${esc(x.replayUrl)}" target="_blank" rel="noopener">Watch the replay →</a>`
+        ? `<a class="replay" href="${esc(x.replayUrl)}?who=${encodeURIComponent(x.persona.name)}" target="_blank" rel="noopener">Watch the replay →</a>`
         : ""
       return `
       <div class="verdict ${ok ? "pass" : "fail"}">
@@ -313,4 +365,5 @@ function esc(s) {
   )
 }
 
+loadSiteTypes()
 loadCast()
