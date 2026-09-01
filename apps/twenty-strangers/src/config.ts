@@ -8,6 +8,8 @@
  * limitation to work around — it is the reason the queue exists.
  */
 
+import "dotenv/config"
+
 export type ModelId = string
 
 function env(name: string, fallback?: string): string {
