@@ -480,3 +480,17 @@ select option { background: var(--bg-raised); color: var(--ink); }
   font-size: 12.5px; line-height: 1.6; color: var(--ink-faint);
   margin: 0 0 2px; max-width: 62ch;
 }
+
+/* One nav item is an invitation rather than a footnote. */
+.nav-pill {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 13px;
+  color: var(--ink) !important;
+  transition: border-color 0.15s, background 0.15s;
+}
+.nav-pill:hover { border-color: var(--accent-dim); background: var(--bg-raised); text-decoration: none; }
+@media (max-width: 560px) {
+  .masthead nav { gap: 12px; font-size: 13px; }
+  .nav-pill { padding: 4px 10px; }
+}
