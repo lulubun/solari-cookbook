@@ -170,6 +170,15 @@ app.get("/api/health", (_req, res) => {
     ok: true,
     mock: config.mock,
     housekeys: houseCredentials() !== null,
+    // Which key is missing, without ever revealing one. A single boolean sends
+    // you hunting through two variables; this says which one to look at.
+    keys: {
+      solari: config.solariApiKey ? "set" : "MISSING",
+      anthropic: config.anthropicApiKey ? "set" : "MISSING",
+      stripe: config.billing.stripeSecretKey ? "set" : "not set",
+      publicBaseUrl: config.billing.publicBaseUrl || "not set",
+    },
+    stateDir: config.access.stateDir,
     queueDepth: queue.depth,
     replays: replayStats(),
     paymentRequired: billing !== null,
