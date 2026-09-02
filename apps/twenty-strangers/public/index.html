@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Twenty Strangers — send twenty people to your website and watch where they give up</title>
 <meta name="description" content="Twenty AI strangers visit your site at once, each on a different device, from a different country, looking for a different thing. Watch them live. Find out where they bounce." />
-<link rel="stylesheet" href="/styles.css?v=9" />
+<link rel="stylesheet" href="/styles.css?v=10" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👥</text></svg>" />
 </head>
 <body>
@@ -41,8 +41,8 @@
       </div>
       <p class="sample-line">
         Not ready to point it at your own site?
-        <button type="button" id="sample-btn" class="linkish">Watch a sample run</button>
-        — free, takes about a minute.
+        <button type="button" id="sample-btn" class="linkish">Watch a real recorded run</button>
+        — free, takes under a minute.
       </p>
       <div class="field-row">
         <select id="site-type" required aria-label="What kind of site is this?">
@@ -98,9 +98,11 @@
 
   <section class="stage" id="stage" hidden>
     <div class="sample-banner" id="sample-banner" hidden>
-      <strong>This is a sample.</strong> A recorded demonstration against a made-up
-      SaaS site — nobody's real website was visited, and none of these findings are
-      about you. Put your own URL in above for a real one.
+      <strong>This is a recording.</strong> A real run against
+      <a href="https://laurabatson.dev" target="_blank" rel="noopener">laurabatson.dev</a>,
+      captured <span id="sample-date">earlier</span> — real visitors, real findings, played
+      back a little faster than it happened. Nothing here is about your site.
+      <span class="sample-cta">Put your own URL in above for that.</span>
     </div>
     <div class="stage-head">
       <h2 id="stage-title">Twenty strangers are looking at your site</h2>
@@ -137,6 +139,6 @@
   </p>
 </footer>
 
-<script type="module" src="/app.js?v=9"></script>
+<script type="module" src="/app.js?v=10"></script>
 </body>
 </html>

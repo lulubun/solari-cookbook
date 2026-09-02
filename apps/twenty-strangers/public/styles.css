@@ -438,3 +438,4 @@ select option { background: var(--bg-raised); color: var(--ink); }
   max-width: 74ch;
 }
 .sample-banner strong { color: var(--accent); }
+.sample-cta { color: var(--ink); }

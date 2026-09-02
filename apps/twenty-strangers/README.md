@@ -10,6 +10,30 @@ Built on [Solari](https://getsolari.com).
 
 ---
 
+## The sample run is a real run
+
+"Watch a real recorded run" plays back an actual twenty-persona run against a
+real site — real visitors, real screenshots of the pages they saw, real
+findings, and the real numbers that run measured. It costs nothing, needs no
+credentials, and visits nothing, because it is a recording.
+
+It was tempting to fabricate this. A canned report presented as a real one
+would be the most dishonest thing this app could do, so instead the recording
+is genuine and labelled as a recording everywhere it appears: a banner over the
+grid, a second on the report, the site named and linked, and the date it was
+captured.
+
+Re-record it against any site with:
+
+```bash
+npx tsx scripts/record-sample.ts https://example.com portfolio "what they should try to do"
+```
+
+That writes `src/sample-run.json` — the full event stream with timings, the
+screencast frames thinned to five per visitor, and one session replay so the
+sample can demonstrate that feature too. Playback runs slightly faster than
+real time; the report still shows the true duration.
+
 ## Telling it what it's looking at
 
 Two things are required before a run, because without them the report is mush.

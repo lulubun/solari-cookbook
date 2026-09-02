@@ -26,6 +26,7 @@ import { getReplay, replayStats } from "./replay-cache.js"
 import { swarmMode } from "./engine/swarm.js"
 import { mockMode } from "./engine/mock.js"
 import { SAMPLE_RUN } from "./sample.js"
+import { sampleAvailable, sampleMeta, sampleMode } from "./sample-player.js"
 import type { RunEvent } from "./engine/types.js"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -101,6 +102,7 @@ app.get("/api/pricing", (_req, res) => {
     priceUsd: billing?.priceUsd ?? 0,
     accessCodesEnabled: config.access.codes.length > 0,
     freeRunsPerDay: config.limits.runsPerDay,
+    sample: sampleMeta(),
   })
 })
 
@@ -282,7 +284,10 @@ wss.on("connection", (ws: WebSocket, req) => {
         controller = new AbortController()
         sampleRuns++
         try {
-          await mockMode(runId).run(SAMPLE_RUN, send, controller.signal)
+          // A recording of a real run when we have one; the synthetic
+          // fallback only when this instance shipped without it.
+          const mode = sampleAvailable() ? sampleMode() : mockMode(runId)
+          await mode.run(SAMPLE_RUN, send, controller.signal)
         } catch (err) {
           send({ type: "fatal", message: err instanceof Error ? err.message : "The sample failed." })
         } finally {

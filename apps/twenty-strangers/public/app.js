@@ -25,6 +25,7 @@ const els = {
   modalClose: $("modal-close"),
   sampleBtn: $("sample-btn"),
   sampleBanner: $("sample-banner"),
+  sampleDate: $("sample-date"),
   costNote: $("cost-note"),
   modes: $("modes"),
   codeFields: $("code-fields"),
@@ -48,6 +49,11 @@ let mode = "pay"
 async function loadPricing() {
   try {
     pricing = await (await fetch("/api/pricing")).json()
+    if (pricing.sample?.recordedAt && els.sampleDate) {
+      els.sampleDate.textContent = new Date(pricing.sample.recordedAt).toLocaleDateString(undefined, {
+        day: "numeric", month: "long", year: "numeric",
+      })
+    }
   } catch {
     // Leave the default; the server is the authority either way.
   }
@@ -402,7 +408,7 @@ function handle(e) {
       els.stage.hidden = false
       els.sampleBanner.hidden = e.isSample !== true
       els.stageTitle.textContent = e.isSample
-        ? "Twenty strangers are looking at a sample site"
+        ? `Twenty strangers looked at ${hostOf(e.target)} — recording`
         : `Twenty strangers are looking at ${hostOf(e.target)}`
       els.grid.innerHTML = ""
       for (const p of e.personas) createTile(p)
@@ -558,7 +564,7 @@ function renderReport(r) {
     .join("")
 
   els.report.innerHTML = `
-    ${r.isSample ? `<div class="sample-banner" style="margin-bottom:22px"><strong>Sample report.</strong> These numbers describe a made-up site and mean nothing about yours. Run it on your own URL to get real ones.</div>` : ""}
+    ${r.isSample ? `<div class="sample-banner" style="margin-bottom:22px"><strong>Recorded report.</strong> These are real findings about <a href="https://laurabatson.dev" target="_blank" rel="noopener">laurabatson.dev</a>, not about your site. Every number below is what that run actually measured. Run it on your own URL to get yours.</div>` : ""}
     <div class="score-row">
       <div class="score">
         <span class="n ${cls}">${pct}%</span>
