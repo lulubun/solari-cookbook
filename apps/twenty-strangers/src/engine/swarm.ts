@@ -110,6 +110,7 @@ export function swarmMode(creds: Credentials, runId: string): RunMode {
         objective: req.objective,
         siteType: site.id,
         international: req.international,
+        isSample: false,
         startedAt,
         durationMs,
         completionRate: completionRate(results),

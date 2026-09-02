@@ -23,6 +23,8 @@ const els = {
   modal: $("persona-modal"),
   modalBody: $("modal-body"),
   modalClose: $("modal-close"),
+  sampleBtn: $("sample-btn"),
+  sampleBanner: $("sample-banner"),
   costNote: $("cost-note"),
   modes: $("modes"),
   codeFields: $("code-fields"),
@@ -244,6 +246,16 @@ els.form.addEventListener("submit", (e) => {
   start()
 })
 
+// The sample needs no URL, no site type, and no objective — it is a recording.
+els.sampleBtn.addEventListener("click", () => {
+  els.report.hidden = true
+  els.report.innerHTML = ""
+  els.grid.innerHTML = ""
+  tiles.clear()
+  setStatus("Playing a sample run…")
+  openSocket({ demo: true })
+})
+
 els.cancel.addEventListener("click", () => {
   if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({ type: "cancel" }))
@@ -318,14 +330,16 @@ async function start() {
 }
 
 /** Opens the run socket. `paymentSessionId` means Stripe already has a hold. */
-function openSocket({ target, objective, siteType, paymentSessionId }) {
+function openSocket({ target, objective, siteType, paymentSessionId, demo }) {
 
   els.runBtn.disabled = true
   const proto = location.protocol === "https:" ? "wss:" : "ws:"
   socket = new WebSocket(`${proto}//${location.host}/ws`)
 
   socket.addEventListener("open", () => {
-    const msg = paymentSessionId
+    const msg = demo
+      ? { type: "start", demo: true }
+      : paymentSessionId
       ? { type: "start", paymentSessionId }
       : {
           type: "start",
@@ -334,11 +348,11 @@ function openSocket({ target, objective, siteType, paymentSessionId }) {
           siteType,
           international: els.intlToggle.checked,
         }
-    if (!paymentSessionId && mode === "byo") {
+    if (!paymentSessionId && !demo && mode === "byo") {
       msg.solariApiKey = els.solariKey.value.trim()
       msg.anthropicApiKey = els.anthropicKey.value.trim()
     }
-    if (!paymentSessionId && mode === "code") {
+    if (!paymentSessionId && !demo && mode === "code") {
       msg.accessCode = els.accessCode.value.trim()
     }
     socket.send(JSON.stringify(msg))
@@ -386,7 +400,10 @@ function handle(e) {
         paintIntlNote()
       }
       els.stage.hidden = false
-      els.stageTitle.textContent = `Twenty strangers are looking at ${hostOf(e.target)}`
+      els.sampleBanner.hidden = e.isSample !== true
+      els.stageTitle.textContent = e.isSample
+        ? "Twenty strangers are looking at a sample site"
+        : `Twenty strangers are looking at ${hostOf(e.target)}`
       els.grid.innerHTML = ""
       for (const p of e.personas) createTile(p)
       setStatus("They're in.")
@@ -541,6 +558,7 @@ function renderReport(r) {
     .join("")
 
   els.report.innerHTML = `
+    ${r.isSample ? `<div class="sample-banner" style="margin-bottom:22px"><strong>Sample report.</strong> These numbers describe a made-up site and mean nothing about yours. Run it on your own URL to get real ones.</div>` : ""}
     <div class="score-row">
       <div class="score">
         <span class="n ${cls}">${pct}%</span>

@@ -65,6 +65,8 @@ export interface RunReport {
   objective: string
   siteType: string
   international: boolean
+  /** True when this report is a canned demonstration, not a real visit. */
+  isSample?: boolean
   startedAt: string
   durationMs: number
   /** Share of personas that ACTUALLY VISITED and got what they came for.
@@ -98,6 +100,7 @@ export type RunEvent =
       objective: string
       siteType: string
       international: boolean
+      isSample?: boolean
       personas: Persona[]
     }
   | { type: "persona:started"; personaId: string }
@@ -118,6 +121,16 @@ export interface RunRequest {
   /** Send the three visitors from abroad, or swap in domestic alternates. */
   international: boolean
   swarmSize: number
+  /**
+   * A canned demonstration rather than a real visit.
+   *
+   * Costs nothing, needs no credentials, and touches no website. It exists so
+   * someone can see what the report looks like before deciding whether to
+   * spend anything — but it must be labelled as a sample everywhere it
+   * appears, because a fabricated report presented as a real one would be the
+   * single most dishonest thing this app could do.
+   */
+  isSample?: boolean
 }
 
 /**

@@ -25,6 +25,7 @@ import { Billing } from "./billing.js"
 import { getReplay, replayStats } from "./replay-cache.js"
 import { swarmMode } from "./engine/swarm.js"
 import { mockMode } from "./engine/mock.js"
+import { SAMPLE_RUN } from "./sample.js"
 import type { RunEvent } from "./engine/types.js"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -99,6 +100,7 @@ app.get("/api/pricing", (_req, res) => {
     paymentRequired: billing !== null,
     priceUsd: billing?.priceUsd ?? 0,
     accessCodesEnabled: config.access.codes.length > 0,
+    freeRunsPerDay: config.limits.runsPerDay,
   })
 })
 
@@ -209,8 +211,14 @@ setInterval(() => {
 let byoActive = 0
 const BYO_CEILING = 3
 
+/** Sample runs are free, so the only limit is this process's own comfort. */
+let sampleRuns = 0
+const SAMPLE_CEILING = 25
+
 interface StartMessage {
   type: "start"
+  /** Run the canned demonstration instead of visiting anything. */
+  demo?: boolean
   target?: string
   objective?: string
   siteType?: string
@@ -260,6 +268,29 @@ wss.on("connection", (ws: WebSocket, req) => {
       if (msg.type !== "start") return
       if (runId) {
         return send({ type: "fatal", message: "A run is already in progress on this connection." })
+      }
+
+      // --- the free sample -------------------------------------------------
+      // Costs nothing and touches no website, so it needs no credentials, no
+      // payment, and no budget check. It is capped only to protect this
+      // process from someone holding a hundred of them open.
+      if (msg.demo === true) {
+        if (sampleRuns >= SAMPLE_CEILING) {
+          return send({ type: "fatal", message: "Too many sample runs at once. Try again in a moment." })
+        }
+        runId = `sample_${Date.now().toString(36)}`
+        controller = new AbortController()
+        sampleRuns++
+        try {
+          await mockMode(runId).run(SAMPLE_RUN, send, controller.signal)
+        } catch (err) {
+          send({ type: "fatal", message: err instanceof Error ? err.message : "The sample failed." })
+        } finally {
+          sampleRuns--
+          runId = null
+          controller = null
+        }
+        return
       }
 
       const byo = Boolean(msg.solariApiKey && msg.anthropicApiKey)

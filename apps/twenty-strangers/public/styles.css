@@ -416,3 +416,25 @@ select option { background: var(--bg-raised); color: var(--ink); }
 .outcome-glyph.na { color: var(--ink-faint); }
 .verdict.na { border-left-color: var(--ink-faint); opacity: 0.82; }
 .na-note { margin: 0 0 8px; max-width: 64ch; }
+
+/* The free sample: an easy way in, and an unmistakable label once running. */
+.sample-line { font-size: 13px; color: var(--ink-faint); margin: 2px 0 0; }
+.linkish {
+  background: none; border: none; padding: 0;
+  color: var(--accent); font-size: 13px; font-weight: 520;
+  text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
+}
+.linkish:hover { filter: brightness(1.15); }
+
+.sample-banner {
+  background: rgba(255, 180, 84, 0.08);
+  border: 1px solid rgba(255, 180, 84, 0.28);
+  border-radius: var(--radius);
+  padding: 13px 16px;
+  margin-bottom: 18px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink-dim);
+  max-width: 74ch;
+}
+.sample-banner strong { color: var(--accent); }

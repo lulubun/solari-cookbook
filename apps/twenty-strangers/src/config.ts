@@ -61,8 +61,14 @@ export const config = {
     /** House-funded runs against one target domain per rolling window. Stops
      *  the tool being pointed at someone else's site over and over. */
     runsPerTargetPerDay: intEnv("TS_RUNS_PER_TARGET_PER_DAY", 3),
-    /** Total house-funded runs per day across everyone. The real budget dial. */
-    runsPerDay: intEnv("TS_RUNS_PER_DAY", 40),
+    /**
+     * Total house-funded REAL runs per day, across everyone. The budget dial.
+     *
+     * Deliberately small. Sample runs are unlimited and cost nothing, so this
+     * governs only the runs that actually spend money — four of them is a few
+     * dollars a day, not a bill that can surprise anyone.
+     */
+    runsPerDay: intEnv("TS_RUNS_PER_DAY", 4),
     /** Queue depth before we start refusing politely. */
     maxQueueDepth: intEnv("TS_MAX_QUEUE_DEPTH", 8),
   },

@@ -170,6 +170,7 @@ export function mockMode(runId: string): RunMode {
         objective: req.objective,
         siteType: req.siteType,
         international: req.international,
+        isSample: req.isSample === true,
         personas,
       })
 
@@ -228,6 +229,7 @@ export function mockMode(runId: string): RunMode {
         objective: req.objective,
         siteType: req.siteType,
         international: req.international,
+        isSample: req.isSample === true,
         startedAt,
         durationMs: Date.now() - t0,
         completionRate: completionRate(results),
