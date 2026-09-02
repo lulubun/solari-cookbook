@@ -165,11 +165,18 @@ function paintWhyCharge() {
     return
   }
   const n = pricing.freeRunsPerDay
-  const count = typeof n === "number" && n > 0 ? (n === 1 ? "One free run is" : `${n} free runs are`) : "A few free runs are"
-  el.innerHTML =
+  const count =
+    typeof n === "number" && n > 0
+      ? n === 1
+        ? "One free run is"
+        : `${n} free runs are`
+      : "A few free runs are"
+  // Sentences rather than dashes: a dash lands wherever the line happens to
+  // wrap, and on a wide screen it stranded the clause on its own line.
+  el.textContent =
     `${count} shared between everyone each day. After those are gone it's ` +
-    `$${pricing.priceUsd.toFixed(2)} — that's there so a busy day can't run up an AI bill I ` +
-    `can't cover, not to make money. Bring your own API keys and it's free either way.`
+    `$${pricing.priceUsd.toFixed(2)}. That's there so a busy day can't run up an AI bill ` +
+    `I can't cover, not to make money. Bring your own API keys and it's free either way.`
 }
 
 function paintSampleMeta() {
