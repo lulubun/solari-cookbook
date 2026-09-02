@@ -179,6 +179,18 @@ app.get("/api/health", (_req, res) => {
       publicBaseUrl: config.billing.publicBaseUrl || "not set",
     },
     stateDir: config.access.stateDir,
+    // Proves whether the platform is injecting variables at all. Names and
+    // booleans only — never a value. If railwayVars is true but the keys are
+    // MISSING, the variables exist somewhere other than this service.
+    env: {
+      railwayVars: Object.keys(process.env).filter((k) => k.startsWith("RAILWAY_")).length,
+      totalVars: Object.keys(process.env).length,
+      tsVarsSeen: Object.keys(process.env)
+        .filter((k) => k.startsWith("TS_"))
+        .sort(),
+      sawSolariName: "SOLARI_API_KEY" in process.env,
+      sawAnthropicName: "ANTHROPIC_API_KEY" in process.env,
+    },
     queueDepth: queue.depth,
     replays: replayStats(),
     paymentRequired: billing !== null,
