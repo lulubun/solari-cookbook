@@ -26,6 +26,8 @@ const els = {
   sampleBtn: $("sample-btn"),
   sampleBanner: $("sample-banner"),
   sampleDate: $("sample-date"),
+  sampleSiteLink: $("sample-site-link"),
+  sampleCtaSub: $("sample-cta-sub"),
   costNote: $("cost-note"),
   modes: $("modes"),
   codeFields: $("code-fields"),
@@ -49,11 +51,7 @@ let mode = "pay"
 async function loadPricing() {
   try {
     pricing = await (await fetch("/api/pricing")).json()
-    if (pricing.sample?.recordedAt && els.sampleDate) {
-      els.sampleDate.textContent = new Date(pricing.sample.recordedAt).toLocaleDateString(undefined, {
-        day: "numeric", month: "long", year: "numeric",
-      })
-    }
+    paintSampleMeta()
   } catch {
     // Leave the default; the server is the authority either way.
   }
@@ -151,6 +149,29 @@ function castCard(p) {
       <p>${esc(p.blurb)}</p>
       <div class="spec"><span>${deviceLabel(p)}</span><span>${p.locale}</span><span>${geo}</span></div>
     </div>`
+}
+
+/**
+ * The sample's site and date come from the recording itself. Nothing about
+ * which site was recorded is written into the page, so swapping the recording
+ * is a one-command operation with no edits here.
+ */
+function paintSampleMeta() {
+  const meta = pricing.sample
+  if (!meta) return
+  if (meta.recordedAt && els.sampleDate) {
+    els.sampleDate.textContent = new Date(meta.recordedAt).toLocaleDateString(undefined, {
+      day: "numeric", month: "long", year: "numeric",
+    })
+  }
+  if (meta.target && els.sampleSiteLink) {
+    els.sampleSiteLink.href = meta.target
+    els.sampleSiteLink.textContent = hostOf(meta.target)
+  }
+  if (meta.target && els.sampleCtaSub) {
+    els.sampleCtaSub.textContent =
+      `Twenty visitors against ${hostOf(meta.target)} — free, no card, no keys.`
+  }
 }
 
 // ---------- who is this person, and why ----------
@@ -564,7 +585,11 @@ function renderReport(r) {
     .join("")
 
   els.report.innerHTML = `
-    ${r.isSample ? `<div class="sample-banner" style="margin-bottom:22px"><strong>Recorded report.</strong> These are real findings about <a href="https://laurabatson.dev" target="_blank" rel="noopener">laurabatson.dev</a>, not about your site. Every number below is what that run actually measured. Run it on your own URL to get yours.</div>` : ""}
+    ${
+      r.isSample
+        ? `<div class="sample-banner" style="margin-bottom:22px"><strong>Recorded report.</strong> These are real findings about <a href="${esc(r.target)}" target="_blank" rel="noopener">${esc(hostOf(r.target))}</a>, not about your site. Every number below is what that run actually measured. Run it on your own URL to get yours.</div>`
+        : ""
+    }
     <div class="score-row">
       <div class="score">
         <span class="n ${cls}">${pct}%</span>
