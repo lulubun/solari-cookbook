@@ -475,3 +475,8 @@ select option { background: var(--bg-raised); color: var(--ink); }
 .or-rule::before, .or-rule::after {
   content: ""; height: 1px; background: var(--line-soft); flex: 1;
 }
+
+.why-charge {
+  font-size: 12.5px; line-height: 1.6; color: var(--ink-faint);
+  margin: 0 0 2px; max-width: 62ch;
+}

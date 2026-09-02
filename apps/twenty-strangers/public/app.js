@@ -52,6 +52,7 @@ async function loadPricing() {
   try {
     pricing = await (await fetch("/api/pricing")).json()
     paintSampleMeta()
+    paintWhyCharge()
   } catch {
     // Leave the default; the server is the authority either way.
   }
@@ -81,8 +82,7 @@ function paintPrice() {
   }
   if (!pricing.paymentRequired) {
     els.runBtn.textContent = "Send them in"
-    els.costNote.textContent =
-      "A run takes ~35s and costs ~50¢ — of which the twenty browsers are about 1¢."
+    els.costNote.textContent = "Free while this is running on my keys."
     return
   }
   els.runBtn.textContent = `Send them in — $${pricing.priceUsd.toFixed(2)}`
@@ -156,6 +156,22 @@ function castCard(p) {
  * which site was recorded is written into the page, so swapping the recording
  * is a one-command operation with no edits here.
  */
+function paintWhyCharge() {
+  const el = $("why-charge")
+  if (!el) return
+  if (!pricing.paymentRequired) {
+    el.textContent =
+      "Runs are free while this is running on my keys. Bring your own API keys and it's free either way."
+    return
+  }
+  const n = pricing.freeRunsPerDay
+  const count = typeof n === "number" && n > 0 ? (n === 1 ? "One free run is" : `${n} free runs are`) : "A few free runs are"
+  el.innerHTML =
+    `${count} shared between everyone each day. After those are gone it's ` +
+    `$${pricing.priceUsd.toFixed(2)} — that's there so a busy day can't run up an AI bill I ` +
+    `can't cover, not to make money. Bring your own API keys and it's free either way.`
+}
+
 function paintSampleMeta() {
   const meta = pricing.sample
   if (!meta) return
@@ -604,8 +620,8 @@ function renderReport(r) {
         <span class="l">all of them, in parallel</span>
       </div>
       <div class="score">
-        <span class="n">$${r.cost.estimatedUsd.toFixed(2)}</span>
-        <span class="l">cost to find out</span>
+        <span class="n">${r.themes.length}</span>
+        <span class="l">${r.themes.length === 1 ? "shared problem" : "shared problems"}</span>
       </div>
     </div>
     ${errored ? `<p class="fine errored-note">${errored} stranger${errored === 1 ? "" : "s"} never reached the site (browser or model failure). They're excluded from every number above — an outage on our side isn't a finding about yours.</p>` : ""}

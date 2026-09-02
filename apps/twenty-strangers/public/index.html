@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Twenty Strangers — send twenty people to your website and watch where they give up</title>
 <meta name="description" content="Twenty AI strangers visit your site at once, each on a different device, from a different country, looking for a different thing. Watch them live. Find out where they bounce." />
-<link rel="stylesheet" href="/styles.css?v=12" />
+<link rel="stylesheet" href="/styles.css?v=13" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👥</text></svg>" />
 </head>
 <body>
@@ -36,6 +36,11 @@
         </span>
       </button>
       <div class="or-rule"><span>or point it at your own site</span></div>
+      <p class="why-charge" id="why-charge">
+        A few free runs are shared between everyone each day. After those are gone
+        it's $2 — that's there so a busy day can't run up an AI bill I can't cover,
+        not to make money. Bring your own API keys and it's free either way.
+      </p>
       <div class="field-row">
         <input
           id="target"
@@ -77,7 +82,7 @@
           <button type="button" class="mode" data-mode="code" role="radio" aria-checked="false">I have a code</button>
           <button type="button" class="mode" data-mode="byo" role="radio" aria-checked="false">My own API keys</button>
         </div>
-        <span class="cost-note" id="cost-note">A run takes ~35s and costs ~50¢ — of which the twenty browsers are about 1¢.</span>
+        <span class="cost-note" id="cost-note"></span>
       </div>
 
       <div class="code-fields" id="code-fields" hidden>
@@ -142,6 +147,6 @@
   </p>
 </footer>
 
-<script type="module" src="/app.js?v=12"></script>
+<script type="module" src="/app.js?v=13"></script>
 </body>
 </html>
