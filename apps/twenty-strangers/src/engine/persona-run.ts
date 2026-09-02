@@ -153,13 +153,23 @@ export async function runPersona(opts: PersonaRunOptions): Promise<PersonaResult
     return result
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
+
+    // Distinguish "the site would not load" from "our own machinery broke".
+    // Reporting the second as the first is how a bad model id or an expired
+    // key gets mistaken for the target website being down — which is both
+    // confusing to the visitor and unfair to the site.
+    const siteFault = /goto|net::|ERR_|timeout .* exceeded|navigating to/i.test(message)
     const result: PersonaResult = {
       persona,
       verdict: {
         completed: false,
-        stoppedAt: "never got started",
-        quote: "I couldn't even get the page to load.",
-        frictions: [{ kind: "performance", detail: message.slice(0, 200), severity: "blocker" }],
+        stoppedAt: siteFault ? "never got started" : "never made it out of the gate",
+        quote: siteFault
+          ? "I couldn't even get the page to load."
+          : "Something broke on this end before I could look at anything. Nothing to do with the site.",
+        frictions: siteFault
+          ? [{ kind: "performance", detail: message.slice(0, 200), severity: "blocker" }]
+          : [],
       },
       steps: 0,
       durationMs: Date.now() - started,

@@ -271,6 +271,7 @@ app.get("/api/health", (_req, res) => {
       publicBaseUrl: config.billing.publicBaseUrl || "not set",
     },
     stateDir: config.access.stateDir,
+    models: { browse: config.browseModel, verdict: config.verdictModel },
     // Proves whether the platform is injecting variables at all. Names and
     // booleans only — never a value. If railwayVars is true but the keys are
     // MISSING, the variables exist somewhere other than this service.

@@ -21,6 +21,29 @@ function env(name: string, fallback?: string): string {
   return v
 }
 
+const DEFAULT_MODEL = "claude-haiku-4-5-20251001"
+
+/**
+ * A model id, or the default if what is configured cannot be one.
+ *
+ * A junk value here does not fail loudly — it fails twenty times, once per
+ * persona, as "I couldn't even get the page to load", which looks exactly like
+ * the target site being down. Falling back and saying so is far better than
+ * letting one mistyped environment variable masquerade as a broken website.
+ */
+function modelEnv(name: string): string {
+  const raw = (process.env[name] ?? "").trim()
+  if (!raw) return DEFAULT_MODEL
+  if (!/^claude-[a-z0-9.-]+$/i.test(raw)) {
+    console.error(
+      `${name} is "${raw}", which is not a Claude model id. Falling back to ${DEFAULT_MODEL}. ` +
+        `Every run would otherwise fail and look like the target site was down.`,
+    )
+    return DEFAULT_MODEL
+  }
+  return raw
+}
+
 function intEnv(name: string, fallback: number): number {
   const raw = process.env[name]
   if (!raw) return fallback
@@ -39,8 +62,8 @@ export const config = {
   /** Required when the Anthropic key is identity-linked; harmless otherwise. */
   anthropicWorkspaceId: process.env.ANTHROPIC_WORKSPACE_ID ?? "",
 
-  browseModel: env("TS_BROWSE_MODEL", "claude-haiku-4-5-20251001") as ModelId,
-  verdictModel: env("TS_VERDICT_MODEL", "claude-haiku-4-5-20251001") as ModelId,
+  browseModel: modelEnv("TS_BROWSE_MODEL"),
+  verdictModel: modelEnv("TS_VERDICT_MODEL"),
 
   swarm: {
     /** The brand promise. Configurable, but 20 is the whole point. */
