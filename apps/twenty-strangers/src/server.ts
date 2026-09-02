@@ -206,8 +206,29 @@ const wss = new WebSocketServer({ server, path: "/ws" })
  * before — free, rate-limited house runs — so the whole thing still works for
  * local development and for anyone self-hosting it.
  */
+/**
+ * A public base URL pointing at localhost is worse than none at all.
+ *
+ * Stripe sends the customer to `success_url` after they pay. If that is
+ * localhost, they land nowhere, never return, and the run they paid for never
+ * happens — the authorisation is left uncaptured so no money is actually taken,
+ * but it is a broken purchase either way. Refusing to enable billing is the
+ * safer failure: the app runs free instead of selling something it cannot
+ * deliver.
+ */
+const baseUrlUsable =
+  !!config.billing.publicBaseUrl &&
+  !/^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)/i.test(config.billing.publicBaseUrl)
+
+if (config.billing.stripeSecretKey && !baseUrlUsable) {
+  console.error(
+    `REFUSING to enable payments: PUBLIC_BASE_URL is "${config.billing.publicBaseUrl || "unset"}". ` +
+      `Stripe would send paying customers there after checkout. Set it to this service's real public origin.`,
+  )
+}
+
 const billing =
-  config.billing.stripeSecretKey && config.billing.publicBaseUrl
+  config.billing.stripeSecretKey && baseUrlUsable
     ? new Billing({
         secretKey: config.billing.stripeSecretKey,
         priceUsd: config.billing.runPriceUsd,
@@ -523,6 +544,16 @@ function hostOfSafe(url: string): string {
   } catch {
     return url
   }
+}
+
+// A relative state directory in production is almost certainly not the mounted
+// volume, which means spent access codes come back to life on every redeploy.
+if (process.env.NODE_ENV === "production" && !config.access.stateDir.startsWith("/")) {
+  console.warn(
+    `WARNING: TS_STATE_DIR is "${config.access.stateDir}", a relative path. ` +
+      `If that is not a mounted volume, every redeploy will un-spend every access code. ` +
+      `Set it to the volume's mount path (e.g. /data).`,
+  )
 }
 
 server.listen(config.port, () => {
