@@ -485,3 +485,6 @@ select option { background: var(--bg-raised); color: var(--ink); }
 @media (max-width: 560px) {
   .masthead nav { gap: 12px; font-size: 13px; }
 }
+
+.fine.ok { color: var(--good); }
+.fine.bad { color: var(--bad); }

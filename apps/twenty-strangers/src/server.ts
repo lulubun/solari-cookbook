@@ -110,6 +110,98 @@ app.get("/api/pricing", (_req, res) => {
  * Start a purchase. The target is validated BEFORE Stripe is involved, so a
  * typo'd URL never reaches a card form.
  */
+/**
+ * What this visitor can do right now.
+ *
+ * The button is disabled when there is nothing left to spend, so the page has
+ * to know before anyone clicks rather than finding out from a rejection.
+ */
+app.get("/api/availability", (req, res) => {
+  const ip =
+    (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ||
+    req.socket.remoteAddress ||
+    "unknown"
+  const globalLeft = global.remaining("global")
+  const ipLeft = perIp.remaining(ip)
+  res.json({
+    freeRunsPerDay: config.limits.runsPerDay,
+    freeRunsLeft: Math.min(globalLeft, ipLeft),
+    globalLeft,
+    yoursLeft: ipLeft,
+  })
+})
+
+/**
+ * Check a code or a pair of keys BEFORE a run starts.
+ *
+ * Without this, a mistyped code or a dead key is only discovered after twenty
+ * browsers have been launched — which wastes real money and looks like the
+ * tool is broken. A code is checked without being spent.
+ */
+app.post("/api/verify", (req, res) => {
+  void (async () => {
+    const body = req.body as { accessCode?: string; solariApiKey?: string; anthropicApiKey?: string }
+
+    if (body.accessCode) {
+      const verdict = accessCodes.check(String(body.accessCode))
+      res.json(verdict.ok ? { ok: true, kind: "code" } : { ok: false, reason: verdict.reason })
+      return
+    }
+
+    const solariKey = String(body.solariApiKey ?? "").trim()
+    const anthropicKey = String(body.anthropicApiKey ?? "").trim()
+    if (!solariKey || !anthropicKey) {
+      res.json({ ok: false, reason: "Both keys are needed." })
+      return
+    }
+
+    // Cheapest possible proof that each key actually works. One token from
+    // Anthropic; a session created and immediately released from Solari.
+    try {
+      const r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": anthropicKey,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: config.browseModel,
+          max_tokens: 1,
+          messages: [{ role: "user", content: "hi" }],
+        }),
+        signal: AbortSignal.timeout(15_000),
+      })
+      if (!r.ok) {
+        const detail = (await r.json().catch(() => null)) as { error?: { message?: string } } | null
+        res.json({
+          ok: false,
+          reason: `Anthropic rejected that key: ${detail?.error?.message ?? `HTTP ${r.status}`}`,
+        })
+        return
+      }
+    } catch {
+      res.json({ ok: false, reason: "Couldn't reach Anthropic to check that key." })
+      return
+    }
+
+    const { Solari } = await import("@solarisdk/browser")
+    const probe = new Solari({ apiKey: solariKey })
+    try {
+      const session = await probe.sessions.create({})
+      await probe.sessions.releaseAndWait(session.id).catch(() => {})
+      res.json({ ok: true, kind: "keys" })
+    } catch (err) {
+      res.json({
+        ok: false,
+        reason: `Solari rejected that key: ${err instanceof Error ? err.message.slice(0, 120) : "unknown error"}`,
+      })
+    } finally {
+      await probe.close().catch(() => {})
+    }
+  })()
+})
+
 app.post("/api/checkout", (req, res) => {
   void (async () => {
     if (!billing) {

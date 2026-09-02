@@ -28,6 +28,8 @@ const els = {
   sampleDate: $("sample-date"),
   sampleSiteLink: $("sample-site-link"),
   sampleCtaSub: $("sample-cta-sub"),
+  codeStatus: $("code-status"),
+  byoStatus: $("byo-status"),
   costNote: $("cost-note"),
   modes: $("modes"),
   codeFields: $("code-fields"),
@@ -45,8 +47,68 @@ const FLAG = { de: "🇩🇪", gb: "🇬🇧", jp: "🇯🇵", us: "🇺🇸", f
 let socket = null
 const tiles = new Map()
 let pricing = { paymentRequired: false, priceUsd: 0, accessCodesEnabled: false }
-/** "pay" | "code" | "byo" */
+let availability = { freeRunsLeft: null, freeRunsPerDay: null }
+/** "pay" | "code" | "byo" — "pay" is the free house run when payments are off. */
 let mode = "pay"
+/** Set by /api/verify. A run only starts once the credential is known good. */
+let verified = { code: false, keys: false }
+
+async function loadAvailability() {
+  try {
+    availability = await (await fetch("/api/availability")).json()
+  } catch {
+    availability = { freeRunsLeft: null, freeRunsPerDay: null }
+  }
+  paintPrice()
+  paintWhyCharge()
+}
+
+/**
+ * Ask the server whether a code or a pair of keys actually works, before any
+ * browsers are launched. A mistyped code should cost nothing and fail in a
+ * sentence, not after twenty sessions have started.
+ */
+async function verifyCredential() {
+  const body =
+    mode === "code"
+      ? { accessCode: els.accessCode.value.trim() }
+      : { solariApiKey: els.solariKey.value.trim(), anthropicApiKey: els.anthropicKey.value.trim() }
+
+  const status = mode === "code" ? els.codeStatus : els.byoStatus
+  const target = mode === "code" ? "code" : "keys"
+  verified[target] = false
+  paintPrice()
+
+  const filled =
+    mode === "code" ? Boolean(body.accessCode) : Boolean(body.solariApiKey && body.anthropicApiKey)
+  if (!filled) {
+    status.textContent = mode === "code" ? "Enter your code." : "Both keys are needed."
+    status.className = "fine"
+    return
+  }
+
+  status.textContent = mode === "code" ? "Checking that code…" : "Checking those keys…"
+  status.className = "fine"
+  try {
+    const res = await fetch("/api/verify", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    })
+    const data = await res.json()
+    verified[target] = data.ok === true
+    status.textContent = data.ok
+      ? mode === "code"
+        ? "Code accepted. It'll be used up by this run."
+        : "Keys accepted. This run bills to your accounts, not mine."
+      : data.reason || "That didn't work."
+    status.className = data.ok ? "fine ok" : "fine bad"
+  } catch {
+    status.textContent = "Couldn't check that right now."
+    status.className = "fine bad"
+  }
+  paintPrice()
+}
 
 async function loadPricing() {
   try {
@@ -64,30 +126,61 @@ function paintPrice() {
   els.codeFields.hidden = mode !== "code"
   els.byoFields.hidden = mode !== "byo"
 
+  // The first tab is a paid run only when payments are actually configured.
+  const firstMode = els.modes.querySelector('[data-mode="pay"]')
+  if (firstMode) {
+    firstMode.textContent = pricing.paymentRequired ? "Pay per run" : "Free run"
+  }
+
   for (const b of els.modes.querySelectorAll(".mode")) {
     const on = b.dataset.mode === mode
     b.classList.toggle("is-on", on)
     b.setAttribute("aria-checked", String(on))
   }
 
+  els.runBtn.textContent = pricing.paymentRequired && mode === "pay"
+    ? `Send them in — $${pricing.priceUsd.toFixed(2)}`
+    : "Send them in"
+
+  // A run can only start when there is something to spend: a free slot, a
+  // verified code, or verified keys.
+  let can = true
+  let note = ""
+
   if (mode === "byo") {
-    els.runBtn.textContent = "Send them in"
-    els.costNote.textContent = "Free — it runs on your keys and bills you directly."
-    return
+    can = verified.keys
+    note = verified.keys
+      ? "Runs on your keys and bills to your accounts, not mine."
+      : "Enter both keys above to enable this."
+  } else if (mode === "code") {
+    can = verified.code
+    note = verified.code ? "One run, on my keys, free to you." : "Enter your code above to enable this."
+  } else if (pricing.paymentRequired) {
+    can = true
+    note = `$${pricing.priceUsd.toFixed(2)} per run, charged only if the run succeeds.`
+  } else {
+    // Two separate ceilings: a daily pool for everyone, and a smaller per
+    // visitor cap so one person cannot take the lot. Say which one is empty,
+    // because "come back tomorrow" and "the world used them" are different
+    // messages to receive.
+    const { globalLeft, yoursLeft, freeRunsPerDay } = availability
+    if (globalLeft === null || globalLeft === undefined) {
+      note = ""
+    } else if (globalLeft <= 0) {
+      can = false
+      note =
+        "Today's free runs are gone. Watch the recorded run, enter a code, or use your own API keys."
+    } else if (yoursLeft <= 0) {
+      can = false
+      note =
+        "You've used your free runs for today. Watch the recorded run, enter a code, or use your own API keys."
+    } else {
+      note = `${globalLeft} of ${freeRunsPerDay} free runs left today.`
+    }
   }
-  if (mode === "code") {
-    els.runBtn.textContent = "Send them in"
-    els.costNote.textContent = "Free with a valid code. One run per code."
-    return
-  }
-  if (!pricing.paymentRequired) {
-    els.runBtn.textContent = "Send them in"
-    els.costNote.textContent = "Free while this is running on my keys."
-    return
-  }
-  els.runBtn.textContent = `Send them in — $${pricing.priceUsd.toFixed(2)}`
-  els.costNote.textContent =
-    `$${pricing.priceUsd.toFixed(2)} per run, charged only if the run succeeds.`
+
+  els.runBtn.disabled = !can
+  els.costNote.textContent = note
 }
 
 const FAMILY_LABEL = {
@@ -159,12 +252,8 @@ function castCard(p) {
 function paintWhyCharge() {
   const el = $("why-charge")
   if (!el) return
-  if (!pricing.paymentRequired) {
-    el.textContent =
-      "Runs are free while this is running on my keys. Bring your own API keys and it's free either way."
-    return
-  }
-  const n = pricing.freeRunsPerDay
+
+  const n = availability.freeRunsPerDay ?? pricing.freeRunsPerDay
   const count =
     typeof n === "number" && n > 0
       ? n === 1
@@ -174,9 +263,9 @@ function paintWhyCharge() {
   // Sentences rather than dashes: a dash lands wherever the line happens to
   // wrap, and on a wide screen it stranded the clause on its own line.
   el.textContent =
-    `${count} available to anyone each day. After those are gone it's ` +
-    `$${pricing.priceUsd.toFixed(2)} per run. The charge is there so a busy day can't run up ` +
-    `an AI bill I can't cover, not to make money. Bring your own API keys and it's free either way.`
+    `${count} shared between everyone each day. After those are gone you can still watch ` +
+    `the recorded run against my portfolio site or use your own API keys. I'd love to make ` +
+    `this unlimited and free for all but I'm not made of tokens.`
 }
 
 function paintSampleMeta() {
@@ -279,6 +368,15 @@ els.modes.addEventListener("click", (e) => {
   mode = btn.dataset.mode
   paintPrice()
 })
+
+let verifyTimer = null
+const scheduleVerify = () => {
+  clearTimeout(verifyTimer)
+  verifyTimer = setTimeout(verifyCredential, 600)
+}
+els.accessCode.addEventListener("input", scheduleVerify)
+els.solariKey.addEventListener("input", scheduleVerify)
+els.anthropicKey.addEventListener("input", scheduleVerify)
 
 function paintIntlNote() {
   els.intlNote.textContent = els.intlToggle.checked
@@ -520,6 +618,7 @@ function handle(e) {
     }
 
     case "run:done":
+      loadAvailability()
       renderReport(e.report)
       setStatus("")
       els.runBtn.disabled = false
@@ -696,5 +795,6 @@ function resumeAfterCheckout() {
 
 loadSiteTypes()
 loadPricing()
+loadAvailability()
 loadCast()
 resumeAfterCheckout()

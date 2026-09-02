@@ -35,6 +35,15 @@ export class SlidingWindow {
     return null
   }
 
+  /** How many are left in the window, so the UI can say so before you click. */
+  remaining(key: string): number {
+    const now = Date.now()
+    const w = this.windows.get(key)
+    if (!w) return this.limit
+    const live = w.hits.filter((t) => now - t < this.windowMs)
+    return Math.max(0, this.limit - live.length)
+  }
+
   record(key: string): void {
     const w = this.windows.get(key) ?? { hits: [] }
     w.hits.push(Date.now())

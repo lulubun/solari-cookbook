@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Twenty Strangers — send twenty people to your website and watch where they give up</title>
 <meta name="description" content="Twenty AI strangers visit your site at once, each on a different device, from a different country, looking for a different thing. Watch them live. Find out where they bounce." />
-<link rel="stylesheet" href="/styles.css?v=17" />
+<link rel="stylesheet" href="/styles.css?v=19" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👥</text></svg>" />
 </head>
 <body>
@@ -38,9 +38,9 @@
       </button>
       <div class="or-rule"><span>or point it at your own site</span></div>
       <p class="why-charge" id="why-charge">
-        A few free runs are available to anyone each day. After those are gone it's
-        $2 per run. The charge is there so a busy day can't run up an AI bill I can't
-        cover, not to make money. Bring your own API keys and it's free either way.
+        A few free runs are shared between everyone each day. After those are gone you
+        can still watch the recorded run against my portfolio site or use your own API
+        keys. I'd love to make this unlimited and free for all but I'm not made of tokens.
       </p>
       <div class="field-row">
         <input
@@ -78,8 +78,8 @@
       </div>
 
       <div class="meta-row">
-        <div class="modes" id="modes" role="radiogroup" aria-label="How to pay for this run">
-          <button type="button" class="mode is-on" data-mode="pay" role="radio" aria-checked="true">Pay per run</button>
+        <div class="modes" id="modes" role="radiogroup" aria-label="How to run this">
+          <button type="button" class="mode is-on" data-mode="pay" role="radio" aria-checked="true">Free run</button>
           <button type="button" class="mode" data-mode="code" role="radio" aria-checked="false">I have a code</button>
           <button type="button" class="mode" data-mode="byo" role="radio" aria-checked="false">My own API keys</button>
         </div>
@@ -88,13 +88,13 @@
 
       <div class="code-fields" id="code-fields" hidden>
         <input id="access-code" type="text" placeholder="Access code" autocomplete="off" spellcheck="false" />
-        <p class="fine">One run per code. It runs on our keys — you never see them, and you pay nothing.</p>
+        <p class="fine" id="code-status">One run per code. It runs on my keys, so you never see them and it costs you nothing.</p>
       </div>
 
       <div class="byo-fields" id="byo-fields" hidden>
         <input id="solari-key" type="password" placeholder="SOLARI_API_KEY (slr_live_…)" autocomplete="off" />
         <input id="anthropic-key" type="password" placeholder="ANTHROPIC_API_KEY (sk-ant-…)" autocomplete="off" />
-        <p class="fine">Keys are used for this run only and never stored on the server.</p>
+        <p class="fine" id="byo-status">Keys are used for this run only and never stored on the server.</p>
       </div>
     </form>
 
@@ -148,6 +148,6 @@
   </p>
 </footer>
 
-<script type="module" src="/app.js?v=17"></script>
+<script type="module" src="/app.js?v=19"></script>
 </body>
 </html>
