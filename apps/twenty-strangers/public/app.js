@@ -174,9 +174,9 @@ function paintWhyCharge() {
   // Sentences rather than dashes: a dash lands wherever the line happens to
   // wrap, and on a wide screen it stranded the clause on its own line.
   el.textContent =
-    `${count} shared between everyone each day. After those are gone it's ` +
-    `$${pricing.priceUsd.toFixed(2)}. That's there so a busy day can't run up an AI bill ` +
-    `I can't cover, not to make money. Bring your own API keys and it's free either way.`
+    `${count} available to anyone each day. After those are gone it's ` +
+    `$${pricing.priceUsd.toFixed(2)} per run. The charge is there so a busy day can't run up ` +
+    `an AI bill I can't cover, not to make money. Bring your own API keys and it's free either way.`
 }
 
 function paintSampleMeta() {
