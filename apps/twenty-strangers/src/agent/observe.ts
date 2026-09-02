@@ -94,7 +94,15 @@ function (maxElements, maxTextChars) {
     if (!name) continue;
     var tag = el.tagName.toLowerCase();
     var role = el.getAttribute("role") || tag;
-    if (tag === "a") role = "link";
+    if (tag === "a") {
+      role = "link";
+      var h = el.getAttribute("href") || "";
+      // Flag links that are not meant to navigate this page, so nobody
+      // mistakes correct behaviour for a dead link.
+      if (/^mailto:/i.test(h)) role = "email link";
+      else if (/^tel:/i.test(h)) role = "phone link";
+      else if (el.getAttribute("target") === "_blank") role = "link (opens new tab)";
+    }
     if (tag === "input") role = "input:" + (el.getAttribute("type") || "text");
     ref += 1;
     el.setAttribute("data-ts-ref", String(ref));

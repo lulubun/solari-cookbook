@@ -153,6 +153,31 @@ export async function executeAction(
       }
 
       const loc = await refLocator(page, ref)
+
+      // Some links are not supposed to navigate the current page at all, and
+      // reporting them as dead is a false accusation about someone's site.
+      // A `mailto:` opens a mail client; a `target="_blank"` opens a new tab.
+      // In both cases this page's URL stays put, which naive before/after
+      // comparison reads as "nothing happened".
+      const href = await loc.getAttribute("href").catch(() => null)
+      const linkTarget = await loc.getAttribute("target").catch(() => null)
+
+      const protocolLink = href?.match(/^(mailto|tel|sms):/i)?.[1]?.toLowerCase()
+      if (protocolLink) {
+        const opens =
+          protocolLink === "mailto" ? "the visitor's email app" : "the visitor's phone dialler"
+        return {
+          result:
+            `"${label}" is a ${protocolLink}: link (${href}). Clicking it hands off to ${opens} ` +
+            `rather than loading a web page, so nothing will change here. That is correct ` +
+            `behaviour — it is NOT a broken link, and must not be reported as one. ` +
+            `The contact route exists and works.`,
+          log: `found ${protocolLink} link "${label}"`,
+        }
+      }
+
+      const ctx = page.context()
+      const tabsBefore = ctx.pages().length
       const beforeUrl = page.url()
       const beforeTitle = await page.title().catch(() => "")
       try {
@@ -160,6 +185,23 @@ export async function executeAction(
         await page.waitForLoadState("domcontentloaded", { timeout: 8000 }).catch(() => {})
         const afterUrl = page.url()
         const afterTitle = await page.title().catch(() => "")
+
+        // A link that opened a new tab worked. Close it so the persona stays
+        // where they were, and say plainly that it worked.
+        const opened = ctx.pages().filter((pg) => pg !== page)
+        if (opened.length > 0 && ctx.pages().length > tabsBefore) {
+          const newest = opened[opened.length - 1]!
+          const openedUrl = newest.url()
+          await newest.close().catch(() => {})
+          return {
+            result:
+              `Clicked "${label}". It opened ${openedUrl || "a new page"} in a NEW TAB, which ` +
+              `is what a link like this is meant to do. The page you are on has not changed ` +
+              `because the link was not supposed to change it. The link works — do not report ` +
+              `it as broken.`,
+            log: `opened "${label}" in a new tab`,
+          }
+        }
 
         // Tell the model what actually happened rather than letting it infer.
         // Left to guess, a persona reports ordinary internal navigation as a
@@ -176,6 +218,10 @@ export async function executeAction(
               : `. That is ordinary navigation within the same site, and is working correctly.`)
         } else if (afterTitle !== beforeTitle) {
           result = `Clicked "${label}". The URL is unchanged but the page content changed to "${afterTitle}".`
+        } else if (linkTarget === "_blank") {
+          result =
+            `Clicked "${label}". It is marked to open in a new tab, so this page correctly ` +
+            `did not change. Treat the link as working.`
         } else {
           result =
             `Clicked "${label}". The URL did not change (still ${afterUrl}) and the title is the same. ` +

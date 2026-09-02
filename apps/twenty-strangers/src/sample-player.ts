@@ -37,8 +37,20 @@ interface Recording {
   replay: { sessionId: string; ndjson: string; personaName: string } | null
 }
 
-/** Playback rate. The report still reports the real elapsed time. */
-const SPEED = 1.6
+/**
+ * Playback is compressed to roughly this long, whatever the recording took.
+ *
+ * Real runs vary a lot — the same site recorded twice took 42s and 160s — and
+ * a demo that sometimes runs for nearly three minutes is a demo nobody
+ * finishes. Deriving the rate from the recording keeps the sample watchable
+ * without anyone having to remember to retune it after re-recording.
+ *
+ * The report still carries the true elapsed time, so every number a visitor
+ * reads is the measured one.
+ */
+const TARGET_PLAYBACK_MS = 45_000
+const MIN_SPEED = 1
+const MAX_SPEED = 5
 
 let cached: Recording | null = null
 
@@ -90,10 +102,16 @@ export function sampleMode(): RunMode {
       const start = Date.now()
       let report: RunReport | null = null
 
+      const recordedMs = rec.events[rec.events.length - 1]?.atMs ?? 0
+      const speed = Math.min(
+        MAX_SPEED,
+        Math.max(MIN_SPEED, recordedMs / TARGET_PLAYBACK_MS),
+      )
+
       for (const { atMs, event } of rec.events) {
         if (signal.aborted) break
 
-        const due = atMs / SPEED
+        const due = atMs / speed
         const wait = due - (Date.now() - start)
         if (wait > 0) await new Promise((r) => setTimeout(r, wait))
         if (signal.aborted) break
