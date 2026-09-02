@@ -20,16 +20,27 @@ thing.
 
 ## 2. Add a volume — do not skip this
 
-**Settings → Volumes → New Volume**, mount path `/data`.
+Volumes are not under Settings. Press **⌘K** for the command palette and search
+**"volume"**, or right-click anywhere on the project canvas. Attach it to this
+service with mount path `/data`.
 
 Single-use access codes are recorded to `TS_STATE_DIR` (which the image sets to
 `/data`). Without a volume, container storage is ephemeral: every redeploy
 silently un-spends every code you have ever handed out, and a code you gave
 someone last week works again.
 
-`numReplicas` is pinned to 1 for the same reason — the burnt-code list, the run
-queue, the rate limits, and the replay cache all live in one process's memory.
-Two replicas would each keep their own, and every limit would double.
+`numReplicas` is pinned to 1 for two reasons. Railway does not allow replicas
+alongside a volume at all, so this is a hard requirement rather than a
+preference — and independently, the burnt-code list, the run queue, the rate
+limits, and the replay cache all live in one process's memory, so a second
+replica would keep its own copy of each and quietly double every limit.
+
+On the free plan you get 0.5GB and one volume per project, which is ample: the
+burnt-code file is a few hundred bytes.
+
+If the deploy logs show permission errors writing to `/data`, Railway is running
+the container as non-root. Set `RAILWAY_RUN_UID=0` to fix it. This image does
+not set `USER`, so it should already run as root.
 
 ## 3. Environment variables
 
