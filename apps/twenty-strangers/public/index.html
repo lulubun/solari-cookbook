@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Twenty Strangers — send twenty people to your website and watch where they give up</title>
 <meta name="description" content="Twenty AI strangers visit your site at once, each on a different device, from a different country, looking for a different thing. Watch them live. Find out where they bounce." />
-<link rel="stylesheet" href="/styles.css?v=11" />
+<link rel="stylesheet" href="/styles.css?v=12" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👥</text></svg>" />
 </head>
 <body>
@@ -28,6 +28,14 @@
     </p>
 
     <form id="run-form" class="runner" autocomplete="off">
+      <button type="button" id="sample-btn" class="sample-cta-btn">
+        <span class="play" aria-hidden="true">▶</span>
+        <span class="sample-cta-text">
+          <span class="sample-cta-title">Watch a real run first</span>
+          <span class="sample-cta-sub" id="sample-cta-sub">Twenty visitors, a real site, free — no card, no keys.</span>
+        </span>
+      </button>
+      <div class="or-rule"><span>or point it at your own site</span></div>
       <div class="field-row">
         <input
           id="target"
@@ -39,13 +47,6 @@
         />
         <button type="submit" id="run-btn">Send them in</button>
       </div>
-      <button type="button" id="sample-btn" class="sample-cta-btn">
-        <span class="play" aria-hidden="true">▶</span>
-        <span class="sample-cta-text">
-          <span class="sample-cta-title">Watch a real run first</span>
-          <span class="sample-cta-sub" id="sample-cta-sub">Twenty visitors, a real site, free — no card, no keys.</span>
-        </span>
-      </button>
       <div class="field-row">
         <select id="site-type" required aria-label="What kind of site is this?">
           <option value="">What kind of site is this?</option>
@@ -141,6 +142,6 @@
   </p>
 </footer>
 
-<script type="module" src="/app.js?v=11"></script>
+<script type="module" src="/app.js?v=12"></script>
 </body>
 </html>
